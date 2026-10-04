@@ -4,7 +4,8 @@
              xmlns:l10n="clr-namespace:CairoDesktop.Common.Localization;assembly=CairoDesktop.Common"
              x:Class="CairoDesktop.Taskbar.TaskButton"
              x:Name="UserControl"
-             xmlns:converters="clr-namespace:CairoDesktop.Taskbar.Converters" 
+             xmlns:converters="clr-namespace:CairoDesktop.Taskbar.Converters"
+             xmlns:cairoPlus="clr-namespace:CairoDesktop.Customization.Themes;assembly=CairoDesktop.Customization"
              Loaded="UserControl_Loaded"
              Unloaded="TaskButton_OnUnloaded">
     <UserControl.Resources>
@@ -93,12 +94,22 @@
                          Maximum="65534" 
                          Value="{Binding Path=ProgressValue, Mode=OneWay}" 
                          Style="{StaticResource TaskbarProgressBar}" />
-            <Image Source="{Binding Path=Icon, Mode=OneWay, FallbackValue={StaticResource NullIcon}, TargetNullValue={StaticResource NullIcon}}"
-                   Name="imgIcon"
+            <Image Name="imgIcon"
                    Width="16"
                    Height="16"
                    Style="{StaticResource TaskbarButtonIcon}"
-                   Grid.Column="0" />
+                   Grid.Column="0">
+                <Image.Source>
+                    <!-- CAIRO-PLUS: per-app icon overrides; passes Cairo's icon through unchanged when none match -->
+                    <MultiBinding Converter="{x:Static cairoPlus:AppIconOverrideConverter.Instance}"
+                                  FallbackValue="{StaticResource NullIcon}"
+                                  TargetNullValue="{StaticResource NullIcon}">
+                        <Binding Path="Icon" Mode="OneWay" />
+                        <Binding />
+                        <Binding Source="{x:Static cairoPlus:AppIconOverrides.Instance}" Path="Version" />
+                    </MultiBinding>
+                </Image.Source>
+            </Image>
             <StackPanel Grid.Column="0"
                         Style="{StaticResource TaskbarButtonOverlayPanel}"
                         Name="overlayIcon"

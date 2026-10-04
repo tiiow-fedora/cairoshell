@@ -50,10 +50,15 @@ namespace CairoDesktop.Services
         {
             SetTheme(THEME_DEFAULT);
 
-            if (_settings.Theme != THEME_DEFAULT)
+            // CAIRO-PLUS: an active theme pack picks the base XAML theme and layers its own resources on top.
+            string theme = Customization.CairoPlusHooks.ThemeOverride ?? _settings.Theme;
+
+            if (theme != THEME_DEFAULT)
             {
-                SetTheme(_settings.Theme);
+                SetTheme(theme);
             }
+
+            Customization.CairoPlusHooks.OnThemeApplied(CairoApplication.Current.Resources);
 
             SetDarkMode();
         }

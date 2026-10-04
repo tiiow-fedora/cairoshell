@@ -1,0 +1,35 @@
+// Gruvbox (dark): retro groove, warm and high-contrast (https://github.com/morhetz/gruvbox).
+{
+  "name": "Gruvbox",
+  "author": "Cairo Plus",
+  "description": "Retro warm darks with a monospace font",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#282828",
+    "surface":    "#3C3836",
+    "overlay":    "#504945",
+    "border":     "#665C54",
+    "text":       "#EBDBB2",
+    "subtext":    "#A89984",
+    "accent":     "#D79921",
+    "accentText": "#282828",
+    "urgent":     "#FB4934",
+  },
+
+  // Raw overrides by Cairo resource key win over the palette.
+  "resources": {
+    "MenuTopBorderBrush": "#FE8019",
+    "TaskbarItemActiveBorder": "#FE8019",
+  },
+
+  "font": { "family": "Consolas", "size": 12 },
+
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  // Per-app icon overrides for taskbar and quick launch buttons (exe name -> image in this pack).
+  "appIcons": {
+    "notepad.exe": "icons/apps/notepad.png",
+  },
+}

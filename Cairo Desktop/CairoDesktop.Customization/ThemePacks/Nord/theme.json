@@ -1,0 +1,26 @@
+// Nord: arctic, north-bluish palette (https://www.nordtheme.com).
+{
+  "name": "Nord",
+  "author": "Cairo Plus",
+  "description": "Cool arctic blues with frost accents",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#2E3440",
+    "surface":    "#3B4252",
+    "overlay":    "#434C5E",
+    "border":     "#4C566A",
+    "text":       "#ECEFF4",
+    "subtext":    "#D8DEE9",
+    "accent":     "#88C0D0",
+    "accentText": "#2E3440",
+    "urgent":     "#BF616A",
+  },
+
+  "font": { "family": "Segoe UI", "size": 12 },
+
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  // Cairo UI icons are picked up automatically from icons/<ResourceKey>.png.
+}

@@ -69,8 +69,15 @@ namespace CairoDesktop.DynamicDesktop
             setBackground();
 
             _settings.PropertyChanged += Settings_PropertyChanged;
+            Customization.CairoPlusHooks.WallpaperChanged += CairoPlus_WallpaperChanged; // CAIRO-PLUS
 
             _fullScreenHelper.FullScreenApps.CollectionChanged += FullScreenApps_CollectionChanged;
+        }
+
+        // CAIRO-PLUS: a theme pack's wallpaper, held in memory only (used when Cairo is the shell).
+        private void CairoPlus_WallpaperChanged(object sender, EventArgs e)
+        {
+            ReloadBackground();
         }
 
         private void SetupPostInit()
@@ -160,6 +167,7 @@ namespace CairoDesktop.DynamicDesktop
         {
             // unsubscribe from things
             _settings.PropertyChanged -= Settings_PropertyChanged;
+            Customization.CairoPlusHooks.WallpaperChanged -= CairoPlus_WallpaperChanged; // CAIRO-PLUS
             _fullScreenHelper.FullScreenApps.CollectionChanged -= FullScreenApps_CollectionChanged;
         }
 
@@ -347,6 +355,16 @@ namespace CairoDesktop.DynamicDesktop
 
         private Brush GetCairoBackgroundBrush()
         {
+            // CAIRO-PLUS: theme pack wallpaper takes precedence while active.
+            if (Customization.CairoPlusHooks.TryGetWallpaperOverride(out string themeWallpaper, out CairoWallpaperStyle themeWallpaperStyle))
+            {
+                Brush themeBrush = GetCairoBackgroundBrush_Image(themeWallpaper, themeWallpaperStyle);
+                if (themeBrush != null)
+                {
+                    return themeBrush;
+                }
+            }
+
             switch (_settings.DesktopBackgroundType)
             {
                 case "cairoImageWallpaper":

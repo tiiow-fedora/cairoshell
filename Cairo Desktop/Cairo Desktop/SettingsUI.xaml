@@ -6,6 +6,7 @@
         xmlns:l10n="clr-namespace:CairoDesktop.Common.Localization;assembly=CairoDesktop.Common"
         xmlns:helpers="clr-namespace:ManagedShell.Common.Helpers;assembly=ManagedShell.Common"
         xmlns:supportingClasses="clr-namespace:CairoDesktop.SupportingClasses"
+        xmlns:cairoPlus="clr-namespace:CairoDesktop.Customization.Settings;assembly=CairoDesktop.Customization"
         Title="{Binding Path=(l10n:DisplayString.sCairoMenu_CairoSettings)}"
         SizeToContent="WidthAndHeight"
         MaxHeight="600"
@@ -858,6 +859,11 @@
                         </StackPanel>
                     </StackPanel>
                 </StackPanel>
+            </TabItem>
+
+            <!-- CAIRO-PLUS: theme packs and customization status -->
+            <TabItem Header="Theme Packs">
+                <cairoPlus:ThemePacksPanel />
             </TabItem>
 
             <TabItem Header="{Binding Path=(l10n:DisplayString.sSettings_Advanced)}">

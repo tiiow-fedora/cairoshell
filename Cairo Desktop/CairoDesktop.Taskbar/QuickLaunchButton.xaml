@@ -6,6 +6,7 @@
              mc:Ignorable="d" 
              xmlns:l10n="clr-namespace:CairoDesktop.Common.Localization;assembly=CairoDesktop.Common"
              x:Class="CairoDesktop.Taskbar.QuickLaunchButton"
+             xmlns:cairoPlus="clr-namespace:CairoDesktop.Customization.Themes;assembly=CairoDesktop.Customization"
              x:Name="UserControl"
              d:DesignWidth="26"
              d:DesignHeight="29"
@@ -23,9 +24,19 @@
                 PreviewMouseLeftButtonDown="btn_PreviewMouseLeftButtonDown" 
                 PreviewMouseMove="btn_PreviewMouseMove">
             <Image Name="imgIcon"
-                   Source="{Binding Path=Icon, Mode=OneWay, FallbackValue={StaticResource NullIcon}, TargetNullValue={StaticResource NullIcon}}" 
                    Width="16"
-                   Height="16" />
+                   Height="16">
+                <Image.Source>
+                    <!-- CAIRO-PLUS: per-app icon overrides; passes Cairo's icon through unchanged when none match -->
+                    <MultiBinding Converter="{x:Static cairoPlus:AppIconOverrideConverter.Instance}"
+                                  FallbackValue="{StaticResource NullIcon}"
+                                  TargetNullValue="{StaticResource NullIcon}">
+                        <Binding Path="Icon" Mode="OneWay" />
+                        <Binding />
+                        <Binding Source="{x:Static cairoPlus:AppIconOverrides.Instance}" Path="Version" />
+                    </MultiBinding>
+                </Image.Source>
+            </Image>
             <Button.ContextMenu>
                 <ContextMenu Opened="ContextMenu_Opened">
                     <MenuItem Header="{Binding Path=(l10n:DisplayString.sInterface_Open)}" 

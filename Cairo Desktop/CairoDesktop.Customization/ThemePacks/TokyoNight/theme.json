@@ -1,0 +1,24 @@
+// Tokyo Night: neon lights over a dark city (https://github.com/enkia/tokyo-night-vscode-theme).
+{
+  "name": "Tokyo Night",
+  "author": "Cairo Plus",
+  "description": "Deep indigo with neon blue and purple",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#1A1B26",
+    "surface":    "#24283B",
+    "overlay":    "#2F334D",
+    "border":     "#414868",
+    "text":       "#C0CAF5",
+    "subtext":    "#A9B1D6",
+    "accent":     "#7AA2F7",
+    "accentText": "#1A1B26",
+    "urgent":     "#F7768E",
+  },
+
+  "font": { "family": "Bahnschrift", "size": 12.5 },
+
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+}

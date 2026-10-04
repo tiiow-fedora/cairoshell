@@ -91,6 +91,7 @@
     <ProjectReference Include="..\CairoDesktop.MenuBar\CairoDesktop.MenuBar.csproj" />
     <ProjectReference Include="..\CairoDesktop.MenuBarExtensions\CairoDesktop.MenuBarExtensions.csproj" />
     <ProjectReference Include="..\CairoDesktop.Taskbar\CairoDesktop.Taskbar.csproj" />
+    <ProjectReference Include="..\CairoDesktop.Customization\CairoDesktop.Customization.csproj" />
   </ItemGroup>
 
   <ItemGroup>

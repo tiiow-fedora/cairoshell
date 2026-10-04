@@ -40,6 +40,12 @@ namespace CairoDesktop
         [STAThread]
         public static int Main(string[] args)
         {
+            // CAIRO-PLUS: --apply-theme / --reload-config edit cairo-plus.json; a running Cairo reloads it live.
+            if (CairoDesktop.Customization.CairoPlusCommandLine.Handle(ref args, MutexName))
+            {
+                return 0;
+            }
+
             if (!SingleInstanceCheck())
             {
                 return 1;
@@ -91,6 +97,7 @@ namespace CairoDesktop
 
                     // Inbox extensions below
                     services.AddSingleton<IShellExtension, MenuBarExtensionsShellExtension>();
+                    services.AddSingleton<IShellExtension, CairoDesktop.Customization.CairoPlusService>(); // CAIRO-PLUS
 
                     // Inbox commands below
                     services.AddSingleton<ICairoCommand, AboutCairoCommand>();

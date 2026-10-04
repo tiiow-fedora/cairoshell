@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <!--
+    Cairo Plus customization layer (theme packs, bar layout, widgets, effects, hotkeys).
+    Everything here is new code; upstream Cairo projects only call into it from a few
+    hook points marked with "CAIRO-PLUS".
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net480;net6.0-windows;net10.0-windows</TargetFrameworks>
+    <Platforms>x64;AnyCPU;ARM64</Platforms>
+    <UseWPF>True</UseWPF>
+    <UseWindowsForms>True</UseWindowsForms>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>CairoDesktop.Customization</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ManagedShell" Version="0.0.358" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CairoDesktop.AppGrabber\CairoDesktop.AppGrabber.csproj" />
+    <ProjectReference Include="..\CairoDesktop.Application\CairoDesktop.Application.csproj" />
+    <ProjectReference Include="..\CairoDesktop.Common\CairoDesktop.Common.csproj" />
+    <ProjectReference Include="..\CairoDesktop.Infrastructure\CairoDesktop.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CairoDesktop.Customization.Tests" />
+  </ItemGroup>
+
+  <!-- Bundled example theme packs, copied next to CairoDesktop.exe as ThemePacks\<name>\ -->
+  <ItemGroup>
+    <Content Include="ThemePacks\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,24 @@
+// Mocha Ember: warm charcoal with red and orange accents. No purple, no blue.
+{
+  "name": "Mocha Ember",
+  "author": "Cairo Plus",
+  "description": "Warm charcoal, ember red and orange",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#1A1212",
+    "surface":    "#271A1A",
+    "overlay":    "#342424",
+    "border":     "#402E2E",
+    "text":       "#EAE0D5",
+    "subtext":    "#C8B8A8",
+    "accent":     "#E64553",
+    "accentText": "#EAE0D5",
+    "urgent":     "#F4A261",
+  },
+
+  "font": { "family": "Segoe UI", "size": 12 },
+
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+}
