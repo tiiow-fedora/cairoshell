@@ -317,6 +317,7 @@ namespace CairoDesktop.Taskbar
                 _taskbarItems.CollectionChanged -= GroupedWindows_Changed;
                 _windowManager.ScreensChanged -= WindowManager_ScreensChanged;
                 _settings.PropertyChanged -= Settings_PropertyChanged;
+                Customization.CairoPlusHooks.UnregisterBar(this); // CAIRO-PLUS
             }
         }
 
@@ -329,6 +330,18 @@ namespace CairoDesktop.Taskbar
             setTaskButtonSize();
 
             SetDesktopPosition();
+
+            // CAIRO-PLUS: let Cairo Plus rearrange this bar's items and host widgets (no-op unless configured).
+            Customization.CairoPlusHooks.RegisterBar(new Customization.Bars.BarHost(this, Widgets.Sdk.WidgetBar.Taskbar,
+                (System.Windows.Controls.Panel)btnDesktopOverlay.Parent,
+                () => new[]
+                {
+                    new System.Collections.Generic.KeyValuePair<string, FrameworkElement>("desktopButton", btnDesktopOverlay),
+                    new System.Collections.Generic.KeyValuePair<string, FrameworkElement>("quickLaunch", quickLaunchList),
+                    new System.Collections.Generic.KeyValuePair<string, FrameworkElement>("tasks", TasksList),
+                    new System.Collections.Generic.KeyValuePair<string, FrameworkElement>("taskList", btnTaskList)
+                },
+                setTaskButtonSize));
         }
 
         private void TaskbarWindow_Loaded(object sender, RoutedEventArgs e)
@@ -433,7 +446,10 @@ namespace CairoDesktop.Taskbar
             if (TasksList.Items.Groups != null)
             {
                 // calculate the maximum per-button size
-                double adjustedSize = Math.Floor((ActualWidth - quickLaunchList.ActualWidth - (btnDesktopOverlay.ActualWidth - 5) - btnTaskList.ActualWidth - (TasksList.Items.Groups.Count * 4 - 3) - 11) / (_settings.TaskbarGroupingStyle == 2 ? TasksList.Items.Groups.Count : TasksList.Items.Count));
+                // CAIRO-PLUS: with a custom layout, the space used by everything except the task buttons comes from Cairo Plus.
+                double reservedWidth = Customization.CairoPlusHooks.GetTaskbarReservedWidth(this)
+                    ?? quickLaunchList.ActualWidth + (btnDesktopOverlay.ActualWidth - 5) + btnTaskList.ActualWidth;
+                double adjustedSize = Math.Floor((ActualWidth - reservedWidth - (TasksList.Items.Groups.Count * 4 - 3) - 11) / (_settings.TaskbarGroupingStyle == 2 ? TasksList.Items.Groups.Count : TasksList.Items.Count));
 
                 if (adjustedSize > baseButtonWidth)
                 {

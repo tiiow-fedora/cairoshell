@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Example third-party widget. It references only CairoDesktop.Widgets.Sdk, never Cairo itself.
+    Build it, then copy bin\...\<framework>\CairoPlus.SampleWidget.dll into
+    %LOCALAPPDATA%\Cairo Desktop\Widgets\ and restart Cairo. See README "Writing a widget".
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net480;net6.0-windows;net10.0-windows</TargetFrameworks>
+    <Platforms>x64;AnyCPU;ARM64</Platforms>
+    <UseWPF>True</UseWPF>
+    <LangVersion>12</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Private=false: don't ship a copy of the SDK; Cairo provides it at runtime. -->
+    <ProjectReference Include="..\..\CairoDesktop.Widgets.Sdk\CairoDesktop.Widgets.Sdk.csproj" Private="false" />
+  </ItemGroup>
+
+</Project>

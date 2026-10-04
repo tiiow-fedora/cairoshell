@@ -39,7 +39,7 @@ namespace CairoDesktop.Customization.Themes
                 warnings.AddRange(expansion.Warnings);
                 foreach (var entry in expansion.Brushes)
                 {
-                    layer[entry.Key] = Freeze(new SolidColorBrush(entry.Value));
+                    layer[entry.Key] = CreateBrush(entry.Key, entry.Value);
                 }
             }
 
@@ -260,7 +260,7 @@ namespace CairoDesktop.Customization.Themes
 
                 if (ColorParser.TryParse(raw, out Color brushColor))
                 {
-                    return Freeze(new SolidColorBrush(brushColor));
+                    return CreateBrush(key, brushColor);
                 }
 
                 error = existing == null
@@ -273,6 +273,25 @@ namespace CairoDesktop.Customization.Themes
                 error = ex.Message;
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Cairo's TaskbarFlashOn/Off storyboards animate GradientStops[0..2] of a task button's background and
+        /// border, so taskbar item brushes must be gradients with at least three stops (all the same colour here).
+        /// They stay unfrozen so the storyboards can animate them.
+        /// </summary>
+        internal static Brush CreateBrush(string key, Color color)
+        {
+            if (key.StartsWith("TaskbarItem", StringComparison.Ordinal))
+            {
+                var gradient = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+                gradient.GradientStops.Add(new GradientStop(color, 0));
+                gradient.GradientStops.Add(new GradientStop(color, 0.5));
+                gradient.GradientStops.Add(new GradientStop(color, 1));
+                return gradient;
+            }
+
+            return Freeze(new SolidColorBrush(color));
         }
 
         private static T Freeze<T>(T freezable) where T : Freezable

@@ -13,6 +13,29 @@ namespace CairoDesktop.Customization.Config
   // Theme pack folder name (from <Cairo>\ThemePacks or %LOCALAPPDATA%\Cairo Desktop\ThemePacks), or null.
   ""theme"": null,
 
+  // Bar layout. Each zone is an ordered list of item ids; items you don't list are hidden.
+  // A zone you leave out keeps its normal contents. ""stacks"" and ""tasks"" stretch when placed in ""center"".
+  //   Menu bar items: cairoMenu, programsMenu, placesMenu, stacks, tray, volume, actionCenter, clock, search
+  //   Taskbar items:  desktopButton, quickLaunch, tasks, taskList
+  //   Widgets:        widget:<id>  (see ""widgets"" below)
+  // ""menuBar"": {
+  //   ""layout"": {
+  //     ""left"":   [""cairoMenu"", ""programsMenu"", ""placesMenu""],
+  //     ""center"": [""widget:clock""],
+  //     ""right"":  [""widget:cpu"", ""widget:memory"", ""tray"", ""search""],
+  //   },
+  // },
+  // ""taskbar"": { ""layout"": { ""right"": [""widget:network"", ""quickLaunch"", ""taskList""] } },
+
+  // Widget instances by id. ""type"" defaults to the id, so ""widget:cpu"" works with no entry here.
+  // Built-in types: clock, cpu, memory, battery, network, command. Any widget can have
+  // ""onClick"": { ""action"": ""launch"" | ""run"" | ""command"" | ""theme"" | ""reload"", ""arg"": ""..."" }.
+  ""widgets"": {
+    // ""clock"":   { ""type"": ""clock"", ""format"": ""ddd d MMM  HH:mm"" },
+    // ""battery"": { ""type"": ""battery"", ""hideWhenNoBattery"": false },
+    // ""weather"": { ""type"": ""command"", ""command"": ""curl -s wttr.in/?format=3"", ""interval"": 900 },
+  },
+
   // Per-app icon overrides for taskbar and quick launch buttons: exe name -> image file.
   ""appIcons"": {
     // ""notepad.exe"": ""C:\\Icons\\notepad.png"",

@@ -114,6 +114,15 @@ namespace CairoDesktop.Customization.Tests
         }
 
         [Fact]
+        public void Starter_template_parses_and_is_disabled()
+        {
+            var result = ConfigLoader.Parse(ConfigTemplate.Text);
+
+            Assert.True(result.Success, result.Error);
+            Assert.False(result.Config.Enabled);
+        }
+
+        [Fact]
         public void User_config_overrides_theme_pack_bar_settings_field_by_field()
         {
             var pack = new BarConfig { CornerRadius = 10, Floating = true, Opacity = 0.8 };

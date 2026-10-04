@@ -1,12 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using CairoDesktop.Application.Interfaces;
+using CairoDesktop.Customization.Actions;
+using CairoDesktop.Customization.Bars;
 using CairoDesktop.Customization.Config;
 using CairoDesktop.Customization.Themes;
+using CairoDesktop.Customization.Widgets;
 using Microsoft.Extensions.Logging;
 
 namespace CairoDesktop.Customization
@@ -21,7 +24,11 @@ namespace CairoDesktop.Customization
         private static readonly TimeSpan ReloadDebounce = TimeSpan.FromMilliseconds(400);
 
         private readonly IThemeService _themeService;
+        private readonly ICommandService _commandService;
         private readonly ILogger<CairoPlusService> _logger;
+        private readonly Dictionary<Window, BarCustomizer> _bars = new Dictionary<Window, BarCustomizer>();
+        private WidgetRegistry _widgets;
+        private ActionRunner _actions;
 
         private FileSystemWatcher _configWatcher;
         private FileSystemWatcher _packWatcher;
@@ -47,9 +54,10 @@ namespace CairoDesktop.Customization
         /// <summary>Raised on the UI thread after settings were (re)applied.</summary>
         public event EventHandler Applied;
 
-        public CairoPlusService(IThemeService themeService, ILogger<CairoPlusService> logger)
+        public CairoPlusService(IThemeService themeService, ICommandService commandService, ILogger<CairoPlusService> logger)
         {
             _themeService = themeService;
+            _commandService = commandService;
             _logger = logger;
         }
 
@@ -60,11 +68,21 @@ namespace CairoDesktop.Customization
             _dispatcher = Dispatcher.CurrentDispatcher;
             _started = true;
 
+            _actions = new ActionRunner(_commandService, this);
+            _widgets = new WidgetRegistry();
+            _widgets.LoadExternal(CairoPlusPaths.WidgetFolders);
+
+            CairoPlusHooks.BarRegistered += OnBarRegistered;
+            CairoPlusHooks.BarUnregistered += OnBarUnregistered;
+            CairoPlusHooks.BarItemsChanging += OnBarItemsChanging;
+            CairoPlusHooks.ReservedWidthProvider = window => _bars.TryGetValue(window, out var bar) ? bar.ReservedWidth : null;
+
             Load();
 
             // Cairo loads its theme right after extensions start, which picks up our hooks;
             // everything that isn't theme-driven is applied here.
             ApplyNonThemeSettings();
+            foreach (var host in CairoPlusHooks.Bars) OnBarRegistered(host);
             StartWatching();
         }
 
@@ -72,6 +90,13 @@ namespace CairoDesktop.Customization
         {
             _started = false;
             StopWatching();
+
+            CairoPlusHooks.BarRegistered -= OnBarRegistered;
+            CairoPlusHooks.BarUnregistered -= OnBarUnregistered;
+            CairoPlusHooks.BarItemsChanging -= OnBarItemsChanging;
+            CairoPlusHooks.ReservedWidthProvider = null;
+            foreach (var bar in _bars.Values) bar.Restore();
+            _bars.Clear();
             if (Current == this) Current = null;
         }
 
@@ -117,6 +142,7 @@ namespace CairoDesktop.Customization
             Load();
             ApplyTheme();
             ApplyNonThemeSettings();
+            ApplyBars();
             RestartPackWatcher();
             Applied?.Invoke(this, EventArgs.Empty);
         }
@@ -142,6 +168,7 @@ namespace CairoDesktop.Customization
         private void Load()
         {
             _problems.Clear();
+            foreach (string problem in _widgets?.LoadProblems ?? new List<string>()) AddProblem(problem);
 
             var result = ConfigLoader.LoadFile(CairoPlusPaths.ConfigFile);
             if (result.Success)
@@ -235,6 +262,51 @@ namespace CairoDesktop.Customization
                 WallpaperApplier.Apply(null, null);
             }
         }
+
+        #region Bars
+        private void OnBarRegistered(BarHost host)
+        {
+            if (!_started || _bars.ContainsKey(host.Window)) return;
+            var customizer = new BarCustomizer(host);
+            _bars[host.Window] = customizer;
+            ApplyBar(customizer);
+        }
+
+        private void OnBarUnregistered(BarHost host)
+        {
+            if (_bars.TryGetValue(host.Window, out var customizer))
+            {
+                customizer.Restore();
+                _bars.Remove(host.Window);
+            }
+        }
+
+        private void OnBarItemsChanging(Window window, bool starting)
+        {
+            if (!_bars.TryGetValue(window, out var customizer)) return;
+            if (starting) customizer.Restore();
+            else ApplyBar(customizer);
+        }
+
+        private void ApplyBars()
+        {
+            foreach (var customizer in _bars.Values.ToList()) ApplyBar(customizer);
+        }
+
+        private void ApplyBar(BarCustomizer customizer)
+        {
+            var config = customizer.Host.Kind == CairoDesktop.Widgets.Sdk.WidgetBar.Taskbar ? Settings.Taskbar : Settings.MenuBar;
+            try
+            {
+                customizer.Apply(Settings.Enabled ? config : null, Settings, _widgets, _actions, AddProblem);
+            }
+            catch (Exception ex)
+            {
+                AddProblem($"Could not apply the bar layout: {ex.Message}");
+                try { customizer.Restore(); } catch { /* leave the bar as it is */ }
+            }
+        }
+        #endregion
 
         private void AddProblem(string message)
         {

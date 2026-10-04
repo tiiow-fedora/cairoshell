@@ -99,10 +99,14 @@ namespace CairoDesktop.MenuBar
                     ShellLogger.Error($"Unable to start UserControl menu bar extension due to exception in {ex.TargetSite?.Module}: {ex.Message}");
                 }
             }
+
+            Customization.CairoPlusHooks.EndBarItemsChange(this); // CAIRO-PLUS: re-apply the custom layout
         }
 
         private void StopMenuBarExtensions()
         {
+            Customization.CairoPlusHooks.BeginBarItemsChange(this); // CAIRO-PLUS: put items back where Cairo expects them
+
             MenuExtrasHost.Children.Clear();
 
             foreach (var extra in _loadedMenuExtras)
@@ -338,6 +342,29 @@ namespace CairoDesktop.MenuBar
             SetBlur(_settings.EnableMenuBarBlur);
 
             setupShadow();
+
+            // CAIRO-PLUS: let Cairo Plus rearrange this bar's items and host widgets (no-op unless configured).
+            Customization.CairoPlusHooks.RegisterBar(new Customization.Bars.BarHost(this, Widgets.Sdk.WidgetBar.MenuBar,
+                CairoMenuBarContainer, GetCairoPlusItems, null));
+        }
+
+        // CAIRO-PLUS: this bar's built-in items, in stock order, for the Cairo Plus layout.
+        private IList<KeyValuePair<string, FrameworkElement>> GetCairoPlusItems()
+        {
+            var items = new List<KeyValuePair<string, FrameworkElement>>
+            {
+                new KeyValuePair<string, FrameworkElement>("cairoMenu", CairoMenu),
+                new KeyValuePair<string, FrameworkElement>("programsMenu", ProgramsMenu),
+                new KeyValuePair<string, FrameworkElement>("placesMenu", PlacesMenu),
+                new KeyValuePair<string, FrameworkElement>("stacks", stacksContainer)
+            };
+
+            foreach (var menuExtra in _loadedMenuExtras.Values)
+            {
+                items.Add(new KeyValuePair<string, FrameworkElement>(Customization.Bars.BarItemIds.ForMenuExtra(menuExtra), menuExtra));
+            }
+
+            return items;
         }
 
         #region Programs menu
@@ -450,6 +477,7 @@ namespace CairoDesktop.MenuBar
             closeShadow();
             _settings.PropertyChanged -= Settings_PropertyChanged;
             StopMenuBarExtensions();
+            Customization.CairoPlusHooks.UnregisterBar(this); // CAIRO-PLUS
             ClearCommandHandlers();
         }
 

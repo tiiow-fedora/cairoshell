@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The only assembly a Cairo Plus widget needs to reference. Kept free of other Cairo
+    dependencies so widgets keep working across Cairo updates.
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net480;net6.0-windows;net10.0-windows</TargetFrameworks>
+    <Platforms>x64;AnyCPU;ARM64</Platforms>
+    <UseWPF>True</UseWPF>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>CairoDesktop.Widgets.Sdk</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

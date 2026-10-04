@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using CairoDesktop.Common;
+using CairoDesktop.Customization.Bars;
 using ManagedShell.Common.Logging;
 
 namespace CairoDesktop.Customization
@@ -53,6 +55,49 @@ namespace CairoDesktop.Customization
             ThemeOverride = themeOverride;
             _themeLayerFactory = layerFactory;
         }
+        #endregion
+
+        #region Bars
+        private static readonly List<BarHost> _bars = new List<BarHost>();
+
+        internal static IReadOnlyList<BarHost> Bars => _bars;
+
+        internal static event Action<BarHost> BarRegistered;
+        internal static event Action<BarHost> BarUnregistered;
+        internal static event Action<Window, bool> BarItemsChanging;
+        internal static Func<Window, double?> ReservedWidthProvider;
+
+        /// <summary>Called by a bar window once its items exist (after OnSourceInitialized).</summary>
+        public static void RegisterBar(BarHost host)
+        {
+            if (host == null || _bars.Contains(host)) return;
+            _bars.Add(host);
+            BarRegistered?.Invoke(host);
+        }
+
+        /// <summary>Called by a bar window when it closes.</summary>
+        public static void UnregisterBar(Window window)
+        {
+            var host = _bars.Find(b => b.Window == window);
+            if (host == null) return;
+            _bars.Remove(host);
+            BarUnregistered?.Invoke(host);
+        }
+
+        /// <summary>
+        /// Called before a bar rebuilds its own items (e.g. menu extras toggled in settings): the stock layout
+        /// is restored so Cairo's code finds everything where it expects it.
+        /// </summary>
+        public static void BeginBarItemsChange(Window window) => BarItemsChanging?.Invoke(window, true);
+
+        /// <summary>Called after a bar rebuilt its own items; the custom layout is re-applied.</summary>
+        public static void EndBarItemsChange(Window window) => BarItemsChanging?.Invoke(window, false);
+
+        /// <summary>
+        /// Width used by everything on the taskbar except its task buttons when the layout is customized,
+        /// or null to let Cairo compute it as usual.
+        /// </summary>
+        public static double? GetTaskbarReservedWidth(Window window) => ReservedWidthProvider?.Invoke(window);
         #endregion
 
         #region Wallpaper (only used when Cairo is the shell and draws its own desktop)
