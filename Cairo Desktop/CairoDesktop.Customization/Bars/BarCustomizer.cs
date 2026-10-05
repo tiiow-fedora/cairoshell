@@ -29,13 +29,21 @@ namespace CairoDesktop.Customization.Bars
         private readonly List<FrameworkElement> _placed = new List<FrameworkElement>();
         private readonly Dictionary<MenuItem, Menu> _menuWrappers = new Dictionary<MenuItem, Menu>();
         private readonly Dictionary<FrameworkElement, string> _ids = new Dictionary<FrameworkElement, string>();
+        private readonly BarEffects _effects;
         private Snapshot _snapshot;
+        private double _spacing;
+        private int _spacerCount;
         private Grid _zones;
 
         public BarCustomizer(BarHost host)
         {
             _host = host;
+            _effects = new BarEffects(host);
         }
+
+        public double ExtraThickness => _effects.ExtraThickness;
+
+        public double HorizontalInset => _effects.HorizontalInset;
 
         public BarHost Host => _host;
 
@@ -53,7 +61,7 @@ namespace CairoDesktop.Customization.Bars
                     if (string.Equals(pair.Value, "tasks", StringComparison.OrdinalIgnoreCase)) continue;
                     width += pair.Key.ActualWidth + pair.Key.Margin.Left + pair.Key.Margin.Right;
                 }
-                return width;
+                return width + _spacerCount * _spacing;
             }
         }
 
@@ -61,12 +69,23 @@ namespace CairoDesktop.Customization.Bars
         public void Apply(BarConfig bar, ResolvedSettings settings, WidgetRegistry registry, ActionRunner actions, Action<string> problem)
         {
             Restore();
+            ApplyLayout(bar, settings, registry, actions, problem);
+            _effects.Apply(bar, settings.Animations, problem, _host.Kind == WidgetBar.Taskbar ? "taskbar" : "menuBar");
+        }
 
+        private void ApplyLayout(BarConfig bar, ResolvedSettings settings, WidgetRegistry registry, ActionRunner actions, Action<string> problem)
+        {
+            _spacing = Math.Max(0, bar?.Spacing ?? 0);
             var layout = bar?.Layout;
-            if (layout == null || (layout.Left == null && layout.Center == null && layout.Right == null))
+            bool hasLayout = layout != null && (layout.Left != null || layout.Center != null || layout.Right != null);
+
+            // Spacing alone still needs the zone layout (with stock contents) to put gaps between items.
+            if (!hasLayout && _spacing <= 0)
             {
                 return;
             }
+
+            layout = hasLayout ? layout : new ZoneLayout();
 
             var items = _host.GetItems().Where(i => i.Value != null).ToList();
             var byId = new Dictionary<string, FrameworkElement>(StringComparer.OrdinalIgnoreCase);
@@ -105,6 +124,10 @@ namespace CairoDesktop.Customization.Bars
             var centerElements = Resolve(center, byId, settings, registry, actions, problem, seen);
             var rightElements = Resolve(right, byId, settings, registry, actions, problem, seen);
 
+            leftElements = WithSpacers(leftElements);
+            centerElements = WithSpacers(centerElements);
+            rightElements = WithSpacers(rightElements);
+
             foreach (var e in leftElements) leftPanel.Children.Add(e);
             foreach (var e in rightElements) rightPanel.Children.Add(e);
 
@@ -115,13 +138,6 @@ namespace CairoDesktop.Customization.Bars
             _zones.Children.Add(centerPanel);
             _zones.Children.Add(rightPanel);
 
-            foreach (string id in left.Concat(right))
-            {
-                if (FillItems.Contains(id))
-                {
-                    problem($"{BarName}: '{id}' only stretches in the center zone; it is shown at its natural size.");
-                }
-            }
 
             // Stock children the layout doesn't manage (e.g. the taskbar's task list popup) stay where they are;
             // the zones fill whatever space the container gives its last child.
@@ -138,6 +154,26 @@ namespace CairoDesktop.Customization.Bars
         private void OnZoneSizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (e.WidthChanged) _host.LayoutChanged?.Invoke();
+        }
+
+        /// <summary>Inserts fixed-width gaps between items (Cairo's own elements are never given margins).</summary>
+        private List<FrameworkElement> WithSpacers(List<FrameworkElement> elements)
+        {
+            if (_spacing <= 0 || elements.Count < 2) return elements;
+
+            var result = new List<FrameworkElement>();
+            for (int i = 0; i < elements.Count; i++)
+            {
+                if (i > 0)
+                {
+                    result.Add(new Border { Width = _spacing, IsHitTestVisible = false });
+                    _spacerCount++;
+                }
+
+                result.Add(elements[i]);
+            }
+
+            return result;
         }
 
         private Panel BuildCenter(List<string> ids, List<FrameworkElement> elements)
@@ -219,7 +255,10 @@ namespace CairoDesktop.Customization.Bars
                 {
                     // Top-level menu items only behave as menu headers inside a Menu.
                     var wrapper = new Menu { VerticalAlignment = VerticalAlignment.Top };
-                    wrapper.SetResourceReference(FrameworkElement.StyleProperty, "CairoMenuBarMainContainerStyle");
+                    // Assigned once (like Cairo's own StaticResource), not as a resource reference: a theme reload would
+                    // otherwise rebuild the wrapper's template and leave the menu item stuck to the old items panel,
+                    // so it could never be put back into Cairo's menu.
+                    wrapper.Style = _host.Window.TryFindResource("CairoMenuBarMainContainerStyle") as Style;
                     wrapper.Items.Add(menuItem);
                     _menuWrappers[menuItem] = wrapper;
                     placed = wrapper;
@@ -235,10 +274,17 @@ namespace CairoDesktop.Customization.Bars
 
         private FrameworkElement WrapWidget(ICairoWidget widget, string widgetId, ResolvedSettings settings, ActionRunner actions, Action<string> problem)
         {
+            // A hover highlight sits behind the widget; it fades when animations are on.
+            var hover = new Border { CornerRadius = new CornerRadius(4), Opacity = 0, IsHitTestVisible = false };
+            hover.SetResourceReference(Border.BackgroundProperty, WidgetTheme.HoverBrushKey);
+            var content = new Border { Child = widget.View, Padding = new Thickness(6, 0, 6, 0) };
+            var layers = new Grid();
+            layers.Children.Add(hover);
+            layers.Children.Add(content);
+
             var host = new Border
             {
-                Child = widget.View,
-                Padding = new Thickness(6, 0, 6, 0),
+                Child = layers,
                 Margin = new Thickness(1, 0, 1, 0),
                 CornerRadius = new CornerRadius(4),
                 VerticalAlignment = VerticalAlignment.Stretch,
@@ -270,8 +316,16 @@ namespace CairoDesktop.Customization.Bars
                 }
             }
 
-            host.MouseEnter += (s, e) => host.SetResourceReference(Border.BackgroundProperty, WidgetTheme.HoverBrushKey);
-            host.MouseLeave += (s, e) => host.Background = System.Windows.Media.Brushes.Transparent;
+            bool animate = settings.Animations?.Enabled == true;
+            var fade = TimeSpan.FromMilliseconds(Math.Max(0, Math.Min(2000, settings.Animations?.DurationMs ?? 220)) / 2);
+            void FadeTo(double target)
+            {
+                if (animate) hover.BeginAnimation(UIElement.OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(target, fade));
+                else hover.Opacity = target;
+            }
+
+            host.MouseEnter += (s, e) => FadeTo(1);
+            host.MouseLeave += (s, e) => FadeTo(0);
             return host;
         }
 
@@ -304,6 +358,8 @@ namespace CairoDesktop.Customization.Bars
             }
 
             _widgets.Clear();
+            _effects.Restore();
+            _spacerCount = 0;
 
             if (_snapshot == null) return;
 
@@ -315,6 +371,10 @@ namespace CairoDesktop.Customization.Bars
 
             _snapshot.Restore();
             _snapshot = null;
+
+            // Let the restored items (menu headers back in Cairo's Menu) lay out before anything resizes the window;
+            // resizing a floating bar in the same pass left the Menu measured empty.
+            _host.Window.UpdateLayout();
             _zones = null;
             _host.LayoutChanged?.Invoke();
         }
@@ -420,6 +480,12 @@ namespace CairoDesktop.Customization.Bars
                     {
                         items.Items.Insert(Math.Min(placement.Item3, items.Items.Count), placement.Item1);
                     }
+                }
+
+                // An ItemsControl whose items left and came back doesn't regenerate its item containers on its own.
+                foreach (var items in _placements.Select(p => p.Item2).OfType<ItemsControl>().Distinct())
+                {
+                    items.Items.Refresh();
                 }
 
                 foreach (var dock in _docks)

@@ -21,4 +21,8 @@
   "font": { "family": "Segoe UI", "size": 12 },
 
   "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  // Floating rounded taskbar over a docked menu bar.
+  "taskbar": { "floating": true, "margin": 8, "cornerRadius": 10 },
+  "animations": { "enabled": true, "durationMs": 300 },
 }

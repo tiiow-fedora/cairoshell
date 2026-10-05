@@ -23,4 +23,9 @@
   "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
 
   // Cairo UI icons are picked up automatically from icons/<ResourceKey>.png.
+
+  // Docked bars, rounded taskbar, slightly see-through.
+  "menuBar": { "opacity": 0.95 },
+  "taskbar": { "cornerRadius": 8, "opacity": 0.95 },
+  "animations": { "enabled": true },
 }

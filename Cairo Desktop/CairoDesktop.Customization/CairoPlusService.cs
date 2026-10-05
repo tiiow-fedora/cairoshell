@@ -76,6 +76,8 @@ namespace CairoDesktop.Customization
             CairoPlusHooks.BarUnregistered += OnBarUnregistered;
             CairoPlusHooks.BarItemsChanging += OnBarItemsChanging;
             CairoPlusHooks.ReservedWidthProvider = window => _bars.TryGetValue(window, out var bar) ? bar.ReservedWidth : null;
+            CairoPlusHooks.ExtraThicknessProvider = window => _bars.TryGetValue(window, out var bar) ? bar.ExtraThickness : 0;
+            CairoPlusHooks.HorizontalInsetProvider = window => _bars.TryGetValue(window, out var bar) ? bar.HorizontalInset : 0;
 
             Load();
 
@@ -95,6 +97,8 @@ namespace CairoDesktop.Customization
             CairoPlusHooks.BarUnregistered -= OnBarUnregistered;
             CairoPlusHooks.BarItemsChanging -= OnBarItemsChanging;
             CairoPlusHooks.ReservedWidthProvider = null;
+            CairoPlusHooks.ExtraThicknessProvider = null;
+            CairoPlusHooks.HorizontalInsetProvider = null;
             foreach (var bar in _bars.Values) bar.Restore();
             _bars.Clear();
             if (Current == this) Current = null;
@@ -197,11 +201,16 @@ namespace CairoDesktop.Customization
 
             Settings = ResolvedSettings.Resolve(_config, pack);
 
-            if (Settings.Pack != null)
+            var resolved = Settings;
+            if (resolved.Pack != null)
             {
-                string baseTheme = string.IsNullOrWhiteSpace(Settings.Pack.Manifest.BaseTheme) ? "Default" : Settings.Pack.Manifest.BaseTheme;
-                var activePack = Settings.Pack;
-                CairoPlusHooks.SetTheme(baseTheme, resources => BuildThemeLayer(activePack, resources));
+                string baseTheme = string.IsNullOrWhiteSpace(resolved.Pack.Manifest.BaseTheme) ? "Default" : resolved.Pack.Manifest.BaseTheme;
+                CairoPlusHooks.SetTheme(baseTheme, resources => BuildThemeLayer(resolved, resources));
+            }
+            else if (resolved.Enabled && ThemeLayerBuilder.NeedsOpacityLayer(resolved))
+            {
+                // No pack, but bar transparency still works on top of Cairo's own theme.
+                CairoPlusHooks.SetTheme(null, resources => BuildThemeLayer(resolved, resources));
             }
             else
             {
@@ -211,13 +220,18 @@ namespace CairoDesktop.Customization
             _logger.LogInformation($"CairoPlus: loaded (enabled: {Settings.Enabled}, theme pack: {Settings.Pack?.Id ?? "none"})");
         }
 
-        private ResourceDictionary BuildThemeLayer(ThemePack pack, ResourceDictionary resources)
+        private ResourceDictionary BuildThemeLayer(ResolvedSettings settings, ResourceDictionary resources)
         {
             var warnings = new List<string>();
-            var layer = ThemeLayerBuilder.Build(pack, key => resources.Contains(key) ? resources[key] : FindInMerged(resources, key), warnings);
+            Func<string, object> findExisting = key => resources.Contains(key) ? resources[key] : FindInMerged(resources, key);
+            var pack = settings.Pack;
+
+            var layer = pack != null ? ThemeLayerBuilder.Build(pack, findExisting, warnings) : new ResourceDictionary();
+            ThemeLayerBuilder.ApplyBarOpacity(layer, settings, findExisting);
+
             foreach (string warning in warnings)
             {
-                AddProblem($"Theme pack '{pack.Id}': {warning}");
+                AddProblem($"Theme pack '{pack?.Id}': {warning}");
             }
 
             return layer;
@@ -267,6 +281,7 @@ namespace CairoDesktop.Customization
         private void OnBarRegistered(BarHost host)
         {
             if (!_started || _bars.ContainsKey(host.Window)) return;
+            _logger.LogDebug($"CairoPlus: bar registered: {Describe(host)}");
             var customizer = new BarCustomizer(host);
             _bars[host.Window] = customizer;
             ApplyBar(customizer);
@@ -274,6 +289,7 @@ namespace CairoDesktop.Customization
 
         private void OnBarUnregistered(BarHost host)
         {
+            _logger.LogDebug($"CairoPlus: bar unregistered: {Describe(host)}");
             if (_bars.TryGetValue(host.Window, out var customizer))
             {
                 customizer.Restore();
@@ -284,8 +300,15 @@ namespace CairoDesktop.Customization
         private void OnBarItemsChanging(Window window, bool starting)
         {
             if (!_bars.TryGetValue(window, out var customizer)) return;
+            _logger.LogDebug($"CairoPlus: bar items {(starting ? "changing" : "changed")}: {Describe(customizer.Host)}");
             if (starting) customizer.Restore();
             else ApplyBar(customizer);
+        }
+
+        private static string Describe(BarHost host)
+        {
+            var bounds = new Rect(host.Window.Left, host.Window.Top, host.Window.Width, host.Window.Height);
+            return $"{host.Kind} #{host.Window.GetHashCode():X} at {bounds}";
         }
 
         private void ApplyBars()

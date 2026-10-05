@@ -26,6 +26,15 @@ namespace CairoDesktop.Customization.Config
   //   },
   // },
   // ""taskbar"": { ""layout"": { ""right"": [""widget:network"", ""quickLaunch"", ""taskList""] } },
+  //
+  // Shapes and effects (per bar, next to ""layout""):
+  //   ""floating"": true, ""margin"": 6   float the bar 6px away from the screen edges
+  //   ""cornerRadius"": 10              round the corners
+  //   ""spacing"": 4                    gap between items
+  //   ""opacity"": 0.85                 background opacity (0..1)
+  //   ""blur"": true                    blur behind the bar; only on docked, square bars (Windows 10
+  //                                   can't clip blur to a floating/rounded shape, so it's turned off there)
+  // ""animations"": { ""enabled"": true, ""durationMs"": 220 },   slide-in, theme cross-fade, widget hover
 
   // Widget instances by id. ""type"" defaults to the id, so ""widget:cpu"" works with no entry here.
   // Built-in types: clock, cpu, memory, battery, network, command. Any widget can have

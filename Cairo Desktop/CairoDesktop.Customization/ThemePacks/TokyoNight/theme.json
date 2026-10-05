@@ -21,4 +21,9 @@
   "font": { "family": "Bahnschrift", "size": 12.5 },
 
   "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  // Shapes and effects: both bars float with rounded corners.
+  "menuBar": { "floating": true, "margin": 6, "cornerRadius": 10, "opacity": 0.92 },
+  "taskbar": { "floating": true, "margin": 6, "cornerRadius": 12, "opacity": 0.92, "spacing": 2 },
+  "animations": { "enabled": true, "durationMs": 240 },
 }

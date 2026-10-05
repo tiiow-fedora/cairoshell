@@ -98,6 +98,15 @@ namespace CairoDesktop.Customization
         /// or null to let Cairo compute it as usual.
         /// </summary>
         public static double? GetTaskbarReservedWidth(Window window) => ReservedWidthProvider?.Invoke(window);
+
+        internal static Func<Window, double> ExtraThicknessProvider;
+        internal static Func<Window, double> HorizontalInsetProvider;
+
+        /// <summary>Extra height a bar should reserve (a floating bar's margins). 0 unless configured.</summary>
+        public static double GetExtraThickness(Window window) => ExtraThicknessProvider?.Invoke(window) ?? 0;
+
+        /// <summary>Width a bar's full-width background should give up at its sides (a floating bar's margins). 0 unless configured.</summary>
+        public static double GetHorizontalInset(Window window) => HorizontalInsetProvider?.Invoke(window) ?? 0;
         #endregion
 
         #region Wallpaper (only used when Cairo is the shell and draws its own desktop)

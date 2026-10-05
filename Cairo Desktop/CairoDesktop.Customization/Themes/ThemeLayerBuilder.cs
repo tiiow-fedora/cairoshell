@@ -275,6 +275,37 @@ namespace CairoDesktop.Customization.Themes
             }
         }
 
+        private static readonly string[] MenuBarBackgroundKeys = { "MenuBarBackground" };
+        private static readonly string[] TaskbarBackgroundKeys = { "TaskbarBottomBackground", "TaskbarTopBackground" };
+
+        internal static bool NeedsOpacityLayer(Config.ResolvedSettings settings)
+        {
+            return (settings.MenuBar?.Opacity ?? 1) < 1 || (settings.Taskbar?.Opacity ?? 1) < 1;
+        }
+
+        /// <summary>Scales the bar background brushes' opacity ("opacity" in a bar's settings, 0..1).</summary>
+        internal static void ApplyBarOpacity(ResourceDictionary layer, Config.ResolvedSettings settings, Func<string, object> findExisting)
+        {
+            ScaleOpacity(layer, MenuBarBackgroundKeys, settings.MenuBar?.Opacity, findExisting);
+            ScaleOpacity(layer, TaskbarBackgroundKeys, settings.Taskbar?.Opacity, findExisting);
+        }
+
+        private static void ScaleOpacity(ResourceDictionary layer, string[] keys, double? opacity, Func<string, object> findExisting)
+        {
+            if (opacity == null || opacity.Value >= 1) return;
+            double factor = Math.Max(0, opacity.Value);
+
+            foreach (string key in keys)
+            {
+                var brush = (layer.Contains(key) ? layer[key] : findExisting(key)) as Brush;
+                if (brush == null) continue;
+
+                var scaled = brush.CloneCurrentValue();
+                scaled.Opacity = brush.Opacity * factor;
+                layer[key] = Freeze(scaled);
+            }
+        }
+
         /// <summary>
         /// Cairo's TaskbarFlashOn/Off storyboards animate GradientStops[0..2] of a task button's background and
         /// border, so taskbar item brushes must be gradients with at least three stops (all the same colour here).

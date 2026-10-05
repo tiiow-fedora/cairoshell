@@ -32,4 +32,19 @@
   "appIcons": {
     "notepad.exe": "icons/apps/notepad.png",
   },
+
+  // Square, docked, with a theme-defined layout and widgets (cairo-plus.json can still override these).
+  "menuBar": {
+    "spacing": 4,
+    "layout": {
+      "left":   ["cairoMenu", "programsMenu", "placesMenu", "stacks"],
+      "center": ["widget:clock"],
+      "right":  ["widget:cpu", "widget:memory", "tray", "volume", "actionCenter", "search"],
+    },
+  },
+  "widgets": {
+    "clock":  { "type": "clock", "format": "ddd dd MMM  HH:mm" },
+    "cpu":    { "type": "cpu", "style": "text" },
+    "memory": { "type": "memory", "style": "text" },
+  },
 }

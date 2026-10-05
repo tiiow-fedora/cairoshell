@@ -17,21 +17,23 @@ namespace CairoDesktop.Customization.Bars
         /// <param name="container">The panel whose children make up the bar's normal layout.</param>
         /// <param name="getItems">Returns the bar's built-in items by id, in their default order.</param>
         /// <param name="layoutChanged">Called after items move or change size (the taskbar recomputes button widths).</param>
-        /// <param name="setThickness">Sets the bar's reserved thickness (height) in DIPs; used by floating bars.</param>
-        /// <param name="baseThickness">Returns the bar's normal thickness without Cairo Plus margins.</param>
+        /// <param name="surface">The element that paints the bar's background (gets margins, rounded corners). Defaults to the container.</param>
+        /// <param name="refreshThickness">
+        /// Re-applies the bar's reserved height; the bar adds <see cref="CairoPlusHooks.GetExtraThickness"/> to its normal height.
+        /// </param>
         public BarHost(Window window, WidgetBar kind, Panel container,
             Func<IList<KeyValuePair<string, FrameworkElement>>> getItems,
             Action layoutChanged,
-            Action<double> setThickness = null,
-            Func<double> baseThickness = null)
+            FrameworkElement surface = null,
+            Action refreshThickness = null)
         {
             Window = window ?? throw new ArgumentNullException(nameof(window));
             Kind = kind;
             Container = container ?? throw new ArgumentNullException(nameof(container));
             GetItems = getItems ?? throw new ArgumentNullException(nameof(getItems));
             LayoutChanged = layoutChanged;
-            SetThickness = setThickness;
-            BaseThickness = baseThickness;
+            Surface = surface ?? container;
+            RefreshThickness = refreshThickness;
         }
 
         public Window Window { get; }
@@ -44,8 +46,8 @@ namespace CairoDesktop.Customization.Bars
 
         public Action LayoutChanged { get; }
 
-        public Action<double> SetThickness { get; }
+        public FrameworkElement Surface { get; }
 
-        public Func<double> BaseThickness { get; }
+        public Action RefreshThickness { get; }
     }
 }

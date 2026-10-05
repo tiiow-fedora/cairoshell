@@ -345,7 +345,18 @@ namespace CairoDesktop.MenuBar
 
             // CAIRO-PLUS: let Cairo Plus rearrange this bar's items and host widgets (no-op unless configured).
             Customization.CairoPlusHooks.RegisterBar(new Customization.Bars.BarHost(this, Widgets.Sdk.WidgetBar.MenuBar,
-                CairoMenuBarContainer, GetCairoPlusItems, null));
+                CairoMenuBarContainer, GetCairoPlusItems, null, CairoMenuBarContainer, RefreshCairoPlusThickness));
+        }
+
+        // CAIRO-PLUS: a floating menu bar reserves its margins on top of the normal 23px height.
+        private void RefreshCairoPlusThickness()
+        {
+            double height = 23 + Customization.CairoPlusHooks.GetExtraThickness(this);
+            MaxHeight = height;
+            Height = height;
+            DesiredHeight = height;
+            UpdatePosition();
+            if (EnvironmentHelper.IsAppRunningAsShell) _appBarManager.SetWorkArea(Screen);
         }
 
         // CAIRO-PLUS: this bar's built-in items, in stock order, for the Cairo Plus layout.

@@ -214,7 +214,8 @@ namespace CairoDesktop.Taskbar
 
         private void setDesiredHeight()
         {
-            DesiredHeight = _settings.TaskbarButtonHeight + getAddToSize();
+            DesiredHeight = _settings.TaskbarButtonHeight + getAddToSize()
+                + Customization.CairoPlusHooks.GetExtraThickness(this); // CAIRO-PLUS: floating bar margins
         }
 
         private int getAddToSize()
@@ -247,7 +248,7 @@ namespace CairoDesktop.Taskbar
         {
             if (useFullWidthAppearance)
             {
-                bdrTaskbar.Width = ActualWidth;
+                bdrTaskbar.Width = ActualWidth - Customization.CairoPlusHooks.GetHorizontalInset(this); // CAIRO-PLUS
 
                 if (_settings.TaskbarEdge == AppBarEdge.Top)
                 {
@@ -341,7 +342,15 @@ namespace CairoDesktop.Taskbar
                     new System.Collections.Generic.KeyValuePair<string, FrameworkElement>("tasks", TasksList),
                     new System.Collections.Generic.KeyValuePair<string, FrameworkElement>("taskList", btnTaskList)
                 },
-                setTaskButtonSize));
+                setTaskButtonSize, bdrTaskbar, RefreshCairoPlusThickness));
+        }
+
+        // CAIRO-PLUS: re-apply height and width after a floating margin change.
+        private void RefreshCairoPlusThickness()
+        {
+            setDesiredHeight();
+            UpdatePosition();
+            if (EnvironmentHelper.IsAppRunningAsShell) _appBarManager.SetWorkArea(Screen);
         }
 
         private void TaskbarWindow_Loaded(object sender, RoutedEventArgs e)
@@ -485,7 +494,7 @@ namespace CairoDesktop.Taskbar
             setTaskbarWidthMode();
 
             // set maxwidth always
-            bdrTaskbar.MaxWidth = ActualWidth;
+            bdrTaskbar.MaxWidth = ActualWidth - Customization.CairoPlusHooks.GetHorizontalInset(this); // CAIRO-PLUS
 
             return changed;
         }
