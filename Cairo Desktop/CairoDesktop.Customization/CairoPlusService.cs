@@ -8,6 +8,7 @@ using CairoDesktop.Application.Interfaces;
 using CairoDesktop.Customization.Actions;
 using CairoDesktop.Customization.Bars;
 using CairoDesktop.Customization.Config;
+using CairoDesktop.Customization.Hotkeys;
 using CairoDesktop.Customization.Themes;
 using CairoDesktop.Customization.Widgets;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,7 @@ namespace CairoDesktop.Customization
         private readonly ILogger<CairoPlusService> _logger;
         private readonly Dictionary<Window, BarCustomizer> _bars = new Dictionary<Window, BarCustomizer>();
         private WidgetRegistry _widgets;
+        private readonly HotkeyRegistry _hotkeys = new HotkeyRegistry();
         private ActionRunner _actions;
 
         private FileSystemWatcher _configWatcher;
@@ -50,6 +52,9 @@ namespace CairoDesktop.Customization
 
         /// <summary>Errors and warnings from the last load, for the settings UI and log.</summary>
         public IReadOnlyList<string> Problems => _problems;
+
+        /// <summary>Hotkeys currently registered, e.g. "Ctrl+Alt+T → theme next".</summary>
+        public IReadOnlyList<string> ActiveHotkeys => _hotkeys.Active;
 
         /// <summary>Raised on the UI thread after settings were (re)applied.</summary>
         public event EventHandler Applied;
@@ -92,6 +97,7 @@ namespace CairoDesktop.Customization
         {
             _started = false;
             StopWatching();
+            _hotkeys.Clear();
 
             CairoPlusHooks.BarRegistered -= OnBarRegistered;
             CairoPlusHooks.BarUnregistered -= OnBarUnregistered;
@@ -257,6 +263,7 @@ namespace CairoDesktop.Customization
         private void ApplyNonThemeSettings()
         {
             AppIconOverrides.Instance.SetOverrides(Settings.AppIcons);
+            _hotkeys.Apply(Settings.Enabled ? Settings.Hotkeys : null, _actions, AddProblem);
 
             if (Settings.Pack != null)
             {

@@ -79,6 +79,11 @@ namespace CairoDesktop.Customization.Settings
                 ? $"Active theme pack: {service.Settings.Pack?.DisplayName ?? "none"}"
                 : "Cairo Plus is off. Applying a theme pack turns it on.");
             status.AppendLine($"Config: {CairoPlusPaths.ConfigFile}");
+            foreach (string hotkey in service.ActiveHotkeys)
+            {
+                status.AppendLine("Hotkey: " + hotkey);
+            }
+
             foreach (string problem in service.Problems)
             {
                 status.AppendLine("• " + problem);

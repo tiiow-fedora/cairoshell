@@ -45,6 +45,18 @@ namespace CairoDesktop.Customization.Config
     // ""weather"": { ""type"": ""command"", ""command"": ""curl -s wttr.in/?format=3"", ""interval"": 900 },
   },
 
+  // System-wide hotkeys (work whether or not Cairo is the Windows shell). Keys: Win, Ctrl, Alt, Shift + one key.
+  // Actions: launch (program/file/URL, optional ""args""), run (command line, no window),
+  //          theme (pack name, ""next"" or ""none""), command (built-in Cairo command), reload.
+  // A combination already taken by Windows or another program is reported in Settings > Theme Packs.
+  ""hotkeys"": [
+    // { ""keys"": ""Ctrl+Alt+T"", ""action"": ""theme"",   ""arg"": ""next"" },
+    // { ""keys"": ""Ctrl+Alt+Return"", ""action"": ""launch"", ""arg"": ""wt.exe"" },
+    // { ""keys"": ""Ctrl+Alt+B"", ""action"": ""run"",     ""arg"": ""C:\\Scripts\\backup.cmd"" },
+    // { ""keys"": ""Ctrl+Alt+D"", ""action"": ""command"", ""arg"": ""ToggleDesktopOverlay"" },
+    // { ""keys"": ""Ctrl+Alt+R"", ""action"": ""reload"" },
+  ],
+
   // Per-app icon overrides for taskbar and quick launch buttons: exe name -> image file.
   ""appIcons"": {
     // ""notepad.exe"": ""C:\\Icons\\notepad.png"",
