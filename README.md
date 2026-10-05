@@ -1,3 +1,5 @@
+> **This is the Cairo Plus fork:** theme packs, bar layouts and widgets, shapes and effects, hotkeys and live reload. See [CAIRO-PLUS.md](CAIRO-PLUS.md) for building, theming and writing widgets.
+
 # Cairo Desktop Environment
 [![Current release](https://img.shields.io/github/v/release/cairoshell/cairoshell?include_prereleases)](https://github.com/cairoshell/cairoshell/releases) ![Build status](https://github.com/cairoshell/cairoshell/workflows/Build/badge.svg)
 
