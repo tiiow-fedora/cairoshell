@@ -17,9 +17,12 @@ exactly like stock Cairo.
 - [Writing a widget](#writing-a-widget)
 - [Shapes and effects](#shapes-and-effects)
 - [Hotkeys](#hotkeys)
+- [Hooks](#hooks)
+- [Theme authoring tools](#theme-authoring-tools)
 - [Command line](#command-line)
 - [Pulling upstream updates](#pulling-upstream-updates)
 - [Known limitations](#known-limitations)
+- [Status and next steps](#status-and-next-steps)
 
 ## Building
 
@@ -37,7 +40,7 @@ dotnet build "Cairo Desktop/Cairo Desktop.csproj" -f net6.0-windows -p:TargetFra
 The output is `Cairo Desktop/bin/x64/Debug/net6.0-windows/win-x64/CairoDesktop.exe`. Use `-f net480
 -p:TargetFrameworks=net480` for the .NET Framework build.
 
-Run the tests (xUnit, 64 tests: config parsing, JSON editing, palette expansion, hotkey parsing, bar layout):
+Run the tests (xUnit, about 136 tests: config parsing, JSON editing, palette expansion, hotkey parsing, bar layout, theme validator, hooks, theme archive and scaffold, theme commands):
 
 ```bash
 dotnet test "Tests/CairoDesktop.Customization.Tests/CairoDesktop.Customization.Tests.csproj" -f net6.0-windows -p:TargetFrameworks=net6.0-windows -p:Platform=x64
@@ -53,8 +56,10 @@ file for Cairo Plus features. Cairo Plus keeps its own `cairo-plus.json`.
    Or run `CairoDesktop.exe --apply-theme Nord`.
 2. To customise further, press **Open config file**. Every saved edit applies within about half a second.
 
-Bundled packs: **Nord**, **Gruvbox** (with its own layout and widgets), **Tokyo Night** (floating rounded
-bars) and **Mocha Ember** (floating taskbar).
+Bundled packs: **Nord**, **Gruvbox** (own layout and widgets), **Tokyo Night** (floating rounded bars),
+**Mocha Ember** (floating taskbar), **Dracula** (stat widgets), **Rose Pine** (floating rounded bars),
+**Solarized Dark** (network and battery widgets), **Everforest** (floating taskbar with a centred task list)
+and **Catppuccin Latte** (a light theme). `CairoDesktop.exe --list-themes` lists them.
 
 ## The config file
 
@@ -77,6 +82,8 @@ setting.
   "widgets": { "clock": { "type": "clock", "format": "ddd d MMM  HH:mm" } },
 
   "hotkeys": [ { "keys": "Ctrl+Alt+T", "action": "theme", "arg": "next" } ],
+
+  "hooks": { "onThemeApplied": [ { "action": "run", "arg": "C:\\Scripts\\retheme.cmd" } ] },
 
   "appIcons": { "notepad.exe": "C:\\Icons\\notepad.png" },
 }
@@ -143,8 +150,14 @@ ThemePacks/
   "taskbar": { "floating": true, "margin": 6, "cornerRadius": 10 },
   "animations": { "enabled": true },
   "widgets": { },
+
+  // Programs to run when the pack is applied. Off unless cairo-plus.json has "allowPackHooks": true.
+  "hooks": { "onThemeApplied": [ { "action": "run", "arg": "powershell -NoProfile -File \"%CAIRO_THEME_DIR%\\apply.ps1\"" } ] },
 }
 ```
+
+Run `CairoDesktop.exe --new-theme "Dracula"` to start from a commented template, and `--validate-theme` to check it
+(see [Theme authoring tools](#theme-authoring-tools)).
 
 **Palette.** Nine semantic roles expand into the roughly 70 brush keys Cairo's XAML themes use (menu bar,
 menus, taskbar buttons in every state, search, dialogs, thumbnails). Only `background` really matters:
@@ -324,6 +337,65 @@ the status list. On a docked, square bar, `blur` works and overrides Cairo's own
 - Hotkeys are registered whether or not Cairo is the shell. A combination already taken by Windows or another
   program (for example `Win+R` while Explorer is the shell) is reported rather than silently ignored.
 
+## Hooks
+
+Hooks run a command when something happens, so a theme switch can restyle other programs too (terminal, editor,
+wallpaper tools). In `cairo-plus.json`:
+
+```jsonc
+"hooks": {
+  "onStart":          [ { "action": "run", "arg": "C:\\Scripts\\startup.cmd" } ],
+  "onThemeApplied":   [ { "action": "run", "arg": "powershell -NoProfile -File C:\\Scripts\\retheme.ps1" } ],
+  "onConfigReloaded": [ { "action": "launch", "arg": "notepad.exe", "args": "%CAIRO_THEME_DIR%\\notes.txt" } ],
+},
+```
+
+| Hook | Fires |
+|---|---|
+| `onStart` | once, after Cairo Plus first applied its settings |
+| `onThemeApplied` | when the active pack changes (a switch, or editing `"theme"`); not at startup |
+| `onConfigReloaded` | after every re-apply, including theme switches; at most once per 2 seconds |
+
+- **Actions:** `run` (command line through cmd.exe, no window), `launch` (program, document or URL) and `command`
+  (built-in Cairo command). `theme` and `reload` are not allowed, because a hook could trigger itself.
+- **Environment.** `run` hooks get these variables, and `%NAME%` is also expanded in `arg` and `args` of every action:
+
+  | Variable | Value |
+  |---|---|
+  | `CAIRO_HOOK` | the hook that fired |
+  | `CAIRO_THEME`, `CAIRO_THEME_NAME` | pack folder name and display name; empty with no pack |
+  | `CAIRO_THEME_DIR` | absolute path of the pack folder |
+  | `CAIRO_THEME_DARK` | `1` or `0` |
+  | `CAIRO_WALLPAPER`, `CAIRO_FONT` | the pack's wallpaper path and font family, if set |
+  | `CAIRO_COLOR_BACKGROUND`, `_SURFACE`, `_OVERLAY`, `_BORDER`, `_TEXT`, `_SUBTEXT`, `_ACCENT`, `_ACCENTTEXT`, `_URGENT` | `#RRGGBB` |
+
+- **Packs can carry hooks, but they stay off.** A pack's `"hooks"` only run when your `cairo-plus.json` has
+  `"allowPackHooks": true`. Until then, Settings > Theme Packs says the pack has hooks. Read `theme.json` before
+  you turn that on for a pack you downloaded. Pack hooks run before yours.
+- Hook failures are reported in the problem list and never stop Cairo.
+
+## Theme authoring tools
+
+These commands run without starting Cairo and print to the console that launched them. Run them from a terminal
+and press Enter afterwards to get the prompt back, because Windows programs don't hold the console. With no
+console (for example from the Run dialog) the output appears in a message box.
+
+```
+CairoDesktop.exe --list-themes                       list packs; * marks the active one
+CairoDesktop.exe --validate-theme [pack|folder]      lint one pack (or all); exit code 1 if there are errors
+CairoDesktop.exe --new-theme "My Theme" [--from Nord]   create a pack in %LOCALAPPDATA%\Cairo Desktop\ThemePacks
+CairoDesktop.exe --export-theme Nord [Nord.zip]      zip a pack to share
+CairoDesktop.exe --install-theme Dracula.zip         install a zip into your packs folder
+```
+
+`--validate-theme` reports each finding as `error` (will not work), `warning` (probably a mistake) or `info`:
+missing files, paths that escape the pack folder, unknown resource keys (typos), bad colours, text with a
+contrast ratio under 4.5:1 against its background, `darkMode` that disagrees with the background, bad bar
+numbers, unknown layout ids and widget types, and invalid hooks.
+
+`--install-theme` refuses archives with `..` or absolute paths, more than 2000 files or more than 200 MB, never
+overwrites an existing pack (the new one gets `-2`), and tells you if the pack defines hooks.
+
 ## Command line
 
 ```
@@ -331,16 +403,18 @@ CairoDesktop.exe --apply-theme <pack>    activate a pack (turns Cairo Plus on); 
 CairoDesktop.exe --reload-config         re-apply cairo-plus.json
 ```
 
+The theme authoring commands are listed [above](#theme-authoring-tools).
+
 Both edit or touch `cairo-plus.json`, keeping your comments, and exit immediately if Cairo is already running;
 the running copy reloads live. If Cairo isn't running, it starts with the new settings.
 
 ## Pulling upstream updates
 
-All new code lives in new projects: `CairoDesktop.Customization`, `CairoDesktop.Widgets.Sdk`,
+All new code lives in new projects: `CairoDesktop.Customization` (including `Cli/` for the theme commands), `CairoDesktop.Widgets.Sdk`,
 `Tests/CairoDesktop.Customization.Tests` and `Samples/CairoPlus.SampleWidget`. Upstream files only gain
 short calls into `CairoPlusHooks`, each marked `CAIRO-PLUS` (`git grep CAIRO-PLUS`):
 
-- `Program.cs`: command-line switch, service registration
+- `Program.cs`: command-line switch, exit code, service registration
 - `CairoApplicationThemeService.cs`: theme pack layer
 - `SettingsUI.xaml`: Theme Packs tab
 - `Desktop.xaml.cs`: in-memory wallpaper (shell mode)
@@ -366,3 +440,39 @@ Conflicts, if any, will be in those spots. Every hook is a no-op while Cairo Plu
 - New widget DLLs need a Cairo restart.
 - Blur only on docked, square bars (see above).
 - Cairo's optional menu bar shadow isn't moved for floating menu bars; leave it off with floating bars.
+
+## Status and next steps
+
+**Pillars.** All four are implemented: theme packs (colours, fonts, wallpaper, icons, radii, bar position and size,
+effects), bar layout and widgets, shapes and effects, and hotkeys plus hooks and commands. Nine packs are bundled.
+
+**Added in the latest session** (branch `claude/cloud-burn`): theme validator and `--validate-theme`, `--list-themes`,
+`--new-theme`, `--export-theme`, `--install-theme`, hooks with `CAIRO_*` environment variables and the
+`allowPackHooks` gate, five more bundled packs, a derived `accentText` that picks black or white by contrast, and
+a fix to Mocha Ember's unreadable accent text that the new validator test found.
+
+**What was verified, and how.** That session ran in a Linux container where `dotnet-install.sh` and NuGet were
+blocked, so WPF, ManagedShell and xUnit could not be restored and **nothing was built as a whole**. Instead, all
+non-UI files (config, theme manifest, palette, validator, hooks model, archive, scaffold, CLI) were compiled on
+.NET 10 against a small `Color` stand-in, and their tests (104 test cases, including 32 of the earlier ones)
+ran through a throwaway xUnit-compatible runner: all passed. Not compiled anywhere: `CairoPlusService` (hook firing),
+`ActionRunner` (environment variables), `CairoPlusCommandLine` (console output) and `Program.cs`, and the project
+file change for zip references on net480. Review those for typos first.
+
+**To test on Windows** (build, then run the tests, then try):
+1. `dotnet build` and the test command above. Fix any compile error in the files named in the previous paragraph.
+2. Switch through all nine packs in Settings > Theme Packs; check the light pack (Catppuccin Latte) for unreadable text.
+3. Hooks: add an `onThemeApplied` `run` hook that writes `%CAIRO_THEME%` and a colour to a file; switch themes.
+   Confirm the file updates, that `onStart` fires once, and that a hook editing `cairo-plus.json` does not loop.
+4. Set a pack hook and confirm it is blocked until `"allowPackHooks": true`.
+5. From a terminal: `--list-themes`, `--validate-theme`, `--new-theme "Test" --from Nord`, `--export-theme Test`,
+   `--install-theme Test.zip`. Also run one from the Run dialog to check the message-box fallback.
+6. Net Framework 4.8 build: confirm the zip commands compile (the `System.IO.Compression` references).
+
+**Next steps.**
+- Show validator findings for the active pack in the Theme Packs tab (needs XAML work; not done because it can't be checked on Linux).
+- A theme preview or gallery in the settings tab, and a "next/previous theme" widget.
+- Per-monitor overrides, and a dedicated pack-level `startup` animation or sound.
+- Optional scripting beyond hooks: a small expression language for widgets, or a documented PowerShell module.
+- Theme packs that follow Windows dark/light mode (a day/night pair of palettes).
+- Run `--validate-theme` in CI against the bundled packs (the unit test already does this).
