@@ -22,6 +22,26 @@ namespace CairoDesktop.Customization.Config
         public string DeviceName { get; set; }
 
         public bool IsPrimary { get; set; }
+
+        /// <summary>
+        /// Describes a monitor from the device names Windows reports. The primary monitor is number 1; the others
+        /// follow in device name order (DISPLAY2 before DISPLAY3).
+        /// </summary>
+        public static MonitorInfo Create(string deviceName, bool isPrimary, string primaryDeviceName, IEnumerable<string> allDeviceNames)
+        {
+            int index = 1;
+            if (!isPrimary)
+            {
+                index = 2;
+                foreach (string other in allDeviceNames ?? new string[0])
+                {
+                    if (string.Equals(other, primaryDeviceName, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (string.Compare(other, deviceName, StringComparison.OrdinalIgnoreCase) < 0) index++;
+                }
+            }
+
+            return new MonitorInfo { Index = index, DeviceName = deviceName ?? "", IsPrimary = isPrimary };
+        }
     }
 
     /// <summary>

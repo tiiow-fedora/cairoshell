@@ -39,6 +39,7 @@ namespace CairoDesktop.Customization
         private bool _started;
         private DateTime _ignoreConfigEventsUntil;
         private DateTime _lastReloadHookUtc = DateTime.MinValue;
+        private bool _windowsUsesLightMode;
 
         private CairoPlusConfig _config = new CairoPlusConfig();
         private readonly List<string> _problems = new List<string>();
@@ -85,6 +86,8 @@ namespace CairoDesktop.Customization
             CairoPlusHooks.ExtraThicknessProvider = window => _bars.TryGetValue(window, out var bar) ? bar.ExtraThickness : 0;
             CairoPlusHooks.HorizontalInsetProvider = window => _bars.TryGetValue(window, out var bar) ? bar.HorizontalInset : 0;
 
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
+
             Load();
 
             // Cairo loads its theme right after extensions start, which picks up our hooks;
@@ -100,6 +103,7 @@ namespace CairoDesktop.Customization
         {
             _started = false;
             StopWatching();
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
             _hotkeys.Clear();
 
             CairoPlusHooks.BarRegistered -= OnBarRegistered;
@@ -153,6 +157,7 @@ namespace CairoDesktop.Customization
             if (!_started) return;
 
             string previousTheme = Settings.Pack?.Id;
+            bool previousLight = Settings.UsesLightAppearance;
 
             Load();
             ApplyTheme();
@@ -161,7 +166,8 @@ namespace CairoDesktop.Customization
             RestartPackWatcher();
             Applied?.Invoke(this, EventArgs.Empty);
 
-            if (!string.Equals(previousTheme, Settings.Pack?.Id, StringComparison.OrdinalIgnoreCase))
+            bool appearanceChanged = Settings.Pack != null && previousLight != Settings.UsesLightAppearance;
+            if (appearanceChanged || !string.Equals(previousTheme, Settings.Pack?.Id, StringComparison.OrdinalIgnoreCase))
             {
                 RunHooks("onThemeApplied");
             }
@@ -196,6 +202,7 @@ namespace CairoDesktop.Customization
             if (result.Success)
             {
                 _config = result.Config;
+                foreach (string problem in ConfigChecker.Check(_config)) AddProblem($"{CairoPlusPaths.ConfigFileName} {problem}");
             }
             else
             {
@@ -217,7 +224,8 @@ namespace CairoDesktop.Customization
                 }
             }
 
-            Settings = ResolvedSettings.Resolve(_config, pack);
+            _windowsUsesLightMode = WindowsAppearance.UsesLightMode();
+            Settings = ResolvedSettings.Resolve(_config, pack, _windowsUsesLightMode);
 
             if (Settings.PackHooksBlocked)
             {
@@ -376,6 +384,17 @@ namespace CairoDesktop.Customization
             return $"{host.Kind} #{host.Window.GetHashCode():X} at {bounds}";
         }
 
+        /// <summary>Which monitor a bar window is on, for the "monitors" overrides. Falls back to the primary monitor.</summary>
+        private static MonitorInfo DescribeMonitor(Window window)
+        {
+            var screen = (window as ManagedShell.AppBar.AppBarWindow)?.Screen;
+            if (screen == null) return new MonitorInfo { Index = 1, DeviceName = "", IsPrimary = true };
+
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            string primary = screens.FirstOrDefault(s => s.Primary)?.DeviceName;
+            return MonitorInfo.Create(screen.DeviceName, screen.Primary, primary, screens.Select(s => s.DeviceName));
+        }
+
         private void ApplyBars()
         {
             foreach (var customizer in _bars.Values.ToList()) ApplyBar(customizer);
@@ -383,10 +402,12 @@ namespace CairoDesktop.Customization
 
         private void ApplyBar(BarCustomizer customizer)
         {
-            var config = customizer.Host.Kind == CairoDesktop.Widgets.Sdk.WidgetBar.Taskbar ? Settings.Taskbar : Settings.MenuBar;
+            bool taskbar = customizer.Host.Kind == CairoDesktop.Widgets.Sdk.WidgetBar.Taskbar;
             try
             {
-                customizer.Apply(Settings.Enabled ? config : null, Settings, _widgets, _actions, AddProblem);
+                // Settings.GetBar is null when Cairo Plus is off; it adds any matching "monitors" entries.
+                var config = Settings.GetBar(taskbar, DescribeMonitor(customizer.Host.Window));
+                customizer.Apply(config, Settings, _widgets, _actions, AddProblem);
             }
             catch (Exception ex)
             {
@@ -405,6 +426,22 @@ namespace CairoDesktop.Customization
         #endregion
 
         #region Live reload
+        /// <summary>
+        /// Windows raises this (on another thread) when its settings change, which includes the light/dark app mode.
+        /// If the mode flipped, re-apply through the same debounce as a file change.
+        /// </summary>
+        private void OnUserPreferenceChanged(object sender, Microsoft.Win32.UserPreferenceChangedEventArgs e)
+        {
+            _dispatcher?.BeginInvoke(new Action(() =>
+            {
+                if (!_started || _reloadTimer == null) return;
+                if (WindowsAppearance.UsesLightMode() == _windowsUsesLightMode) return;
+
+                _reloadTimer.Stop();
+                _reloadTimer.Start();
+            }));
+        }
+
         private void StartWatching()
         {
             _reloadTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = ReloadDebounce };

@@ -155,5 +155,30 @@ namespace CairoDesktop.Customization.Tests
             Assert.Contains(problems, p => p.Contains("'left'"));
             Assert.Contains(problems, p => p.Contains("'primary'"));
         }
+    
+        [Fact]
+        public void Monitor_numbers_put_the_primary_first_then_device_name_order()
+        {
+            var devices = new[] { @"\\.\DISPLAY3", @"\\.\DISPLAY1", @"\\.\DISPLAY2" };
+
+            // DISPLAY2 is the primary here, so it is monitor 1 although DISPLAY1 sorts first.
+            var d2 = MonitorInfo.Create(@"\\.\DISPLAY2", true, @"\\.\DISPLAY2", devices);
+            var d1 = MonitorInfo.Create(@"\\.\DISPLAY1", false, @"\\.\DISPLAY2", devices);
+            var d3 = MonitorInfo.Create(@"\\.\DISPLAY3", false, @"\\.\DISPLAY2", devices);
+
+            Assert.Equal(1, d2.Index);
+            Assert.Equal(2, d1.Index);
+            Assert.Equal(3, d3.Index);
+            Assert.True(d2.IsPrimary);
+            Assert.Equal(4, MonitorOverrides.Match("DISPLAY3", d3));
+            Assert.Equal(3, MonitorOverrides.Match("3", d3));
+        }
+
+        [Fact]
+        public void A_single_monitor_is_number_one()
+        {
+            var only = MonitorInfo.Create(@"\\.\DISPLAY1", true, @"\\.\DISPLAY1", new[] { @"\\.\DISPLAY1" });
+            Assert.Equal(1, only.Index);
+        }
     }
 }
