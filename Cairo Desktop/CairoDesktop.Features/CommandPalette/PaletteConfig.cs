@@ -122,6 +122,14 @@ namespace CairoDesktop.Features.CommandPalette
         {
             if (string.IsNullOrWhiteSpace(url)) return "must not be empty";
             if (url.IndexOf("{q}", StringComparison.Ordinal) < 0) return "must contain {q}";
+            // {q} must come after the host: otherwise typed text could choose the site ("https://{q}" + "evil.com").
+            int schemeEnd = url.IndexOf("://", StringComparison.Ordinal);
+            if (schemeEnd >= 0)
+            {
+                int authorityEnd = url.IndexOfAny(new[] { '/', '?', '#' }, schemeEnd + 3);
+                int firstQ = url.IndexOf("{q}", StringComparison.Ordinal);
+                if (authorityEnd < 0 || firstQ < authorityEnd) return "must not use {q} in the scheme or host";
+            }
             // Check the shape with a harmless value substituted.
             if (!PaletteAction.IsSafeWebUrl(url.Replace("{q}", "test"))) return "must be an absolute http or https URL";
             return null;
@@ -149,7 +157,7 @@ namespace CairoDesktop.Features.CommandPalette
                     case "ctrl": case "control": ctrl = true; continue;
                     case "alt": alt = true; continue;
                     case "shift": shift = true; continue;
-                    case "win": case "windows": case "super": win = true; continue;
+                    case "win": case "windows": case "super": case "meta": win = true; continue;
                 }
 
                 if (key != null) { error = "has more than one key"; return null; }
@@ -187,7 +195,16 @@ namespace CairoDesktop.Features.CommandPalette
                 if (string.Equals(named, part, StringComparison.OrdinalIgnoreCase)) return named;
             }
 
-            if (string.Equals(part, "esc", StringComparison.OrdinalIgnoreCase)) return "Escape";
+            switch (part.ToLowerInvariant())
+            {
+                case "esc": return "Escape";
+                case "return": return "Enter";
+                case "pgup": return "PageUp";
+                case "pgdn": return "PageDown";
+                case "del": return "Delete";
+                case "ins": return "Insert";
+            }
+
             return null;
         }
 

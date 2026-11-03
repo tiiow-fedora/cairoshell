@@ -45,7 +45,14 @@ namespace CairoDesktop.Features.CommandPalette
             config = config ?? new PaletteConfig();
             var providers = new List<ICommandProvider>();
             if (config.Providers.Commands) providers.Add(new UserCommandProvider(config.Commands));
-            if (hostProviders != null) providers.AddRange(hostProviders);
+            if (hostProviders != null)
+            {
+                foreach (ICommandProvider h in hostProviders)
+                {
+                    if (h == null) continue;
+                    providers.Add(config.Providers.Apps ? h : new AppFilteringProvider(h));
+                }
+            }
             if (config.Providers.Calculator) providers.Add(new CalculatorProvider());
             if (config.Providers.WebSearch) providers.Add(new WebSearchProvider(config.WebSearchUrl));
             return new PaletteEngine(providers, frecency);
@@ -66,30 +73,28 @@ namespace CairoDesktop.Features.CommandPalette
             {
                 ICommandProvider provider = _providers[pIndex];
                 string name = SafeName(provider);
-                IReadOnlyList<PaletteItem> items;
                 try
                 {
-                    items = provider.Query(query);
+                    IReadOnlyList<PaletteItem> items = provider.Query(query);
+                    if (items == null) continue;
+                    int count = Math.Min(items.Count, MaxItemsPerProvider);
+                    if (items.Count > MaxItemsPerProvider) diagnostics.Add($"Provider '{name}' returned {items.Count} items; only the first {MaxItemsPerProvider} were used.");
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        PaletteItem item = items[i];
+                        if (item == null) continue;
+                        if (category != null && !string.Equals(item.Category, category, StringComparison.Ordinal)) continue;
+                        if (!seen.Add(item.Id)) continue;
+
+                        Candidate c = Score(item, query, hasText, name, pIndex);
+                        if (c != null) candidates.Add(c);
+                    }
                 }
                 catch (Exception ex)
                 {
+                    // Items already accepted from this provider before it failed are kept.
                     diagnostics.Add($"Provider '{name}' failed: {ex.GetType().Name}: {ex.Message}");
-                    continue;
-                }
-
-                if (items == null) continue;
-                int count = Math.Min(items.Count, MaxItemsPerProvider);
-                if (items.Count > MaxItemsPerProvider) diagnostics.Add($"Provider '{name}' returned {items.Count} items; only the first {MaxItemsPerProvider} were used.");
-
-                for (int i = 0; i < count; i++)
-                {
-                    PaletteItem item = items[i];
-                    if (item == null) continue;
-                    if (category != null && !string.Equals(item.Category, category, StringComparison.Ordinal)) continue;
-                    if (!seen.Add(item.Id)) continue;
-
-                    Candidate c = Score(item, query, hasText, name, pIndex);
-                    if (c != null) candidates.Add(c);
                 }
             }
 
@@ -172,6 +177,27 @@ namespace CairoDesktop.Features.CommandPalette
             c = string.CompareOrdinal(a.Item.Id, b.Item.Id);
             if (c != 0) return c;
             return a.ProviderIndex.CompareTo(b.ProviderIndex);
+        }
+
+        /// <summary>Hides App items of a host provider when <c>providers.apps</c> is off.</summary>
+        private sealed class AppFilteringProvider : ICommandProvider
+        {
+            private readonly ICommandProvider _inner;
+            public AppFilteringProvider(ICommandProvider inner) { _inner = inner; }
+            public string Name => _inner.Name;
+
+            public IReadOnlyList<PaletteItem> Query(PaletteQuery query)
+            {
+                IReadOnlyList<PaletteItem> items = _inner.Query(query);
+                if (items == null) return null;
+                var list = new List<PaletteItem>(items.Count);
+                for (int i = 0; i < items.Count; i++)
+                {
+                    PaletteItem it = items[i];
+                    if (it != null && !string.Equals(it.Category, PaletteCategories.App, StringComparison.Ordinal)) list.Add(it);
+                }
+                return list;
+            }
         }
 
         private static string SafeName(ICommandProvider p)

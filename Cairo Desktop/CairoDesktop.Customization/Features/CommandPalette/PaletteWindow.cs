@@ -26,6 +26,7 @@ namespace CairoDesktop.Customization.Features.CommandPalette
         private readonly WpfTextBox _input = new WpfTextBox { FontSize = 20, Padding = new Thickness(8), BorderThickness = new Thickness(0) };
         private readonly WpfListBox _list = new WpfListBox { BorderThickness = new Thickness(0), MaxHeight = 360 };
         private IReadOnlyList<PaletteResult> _results = Array.Empty<PaletteResult>();
+        private bool _closeRequested;
 
         public event Action<string> QueryChanged;
         public event Action<PaletteResult> Accepted;
@@ -84,7 +85,7 @@ namespace CairoDesktop.Customization.Features.CommandPalette
             {
                 case Key.Escape:
                     e.Handled = true;
-                    Close();
+                    CloseOnce();
                     break;
                 case Key.Down:
                     e.Handled = true;
@@ -106,11 +107,31 @@ namespace CairoDesktop.Customization.Features.CommandPalette
         private void AcceptSelected()
         {
             int i = _list.SelectedIndex;
-            if (i >= 0 && i < _results.Count) Accepted?.Invoke(_results[i]);
+            if (!_closeRequested && i >= 0 && i < _results.Count) Accepted?.Invoke(_results[i]);
         }
 
         // Clicking elsewhere (or alt-tabbing) dismisses the palette like Spotlight does.
-        private void OnDeactivated(object sender, EventArgs e) => Close();
+        // Closing a window itself deactivates it, and WPF throws if Close() is called again while a window is
+        // closing, so the close is deferred to the dispatcher and goes through the idempotent CloseOnce.
+        private void OnDeactivated(object sender, EventArgs e)
+        {
+            if (_closeRequested) return;
+            Dispatcher.BeginInvoke(new Action(CloseOnce));
+        }
+
+        /// <summary>Closes the window at most once; safe to call from Deactivated, key handlers or a queued dispatcher call.</summary>
+        public void CloseOnce()
+        {
+            if (_closeRequested) return;
+            _closeRequested = true;
+            Close();
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            _closeRequested = true; // any other close path (Alt+F4) also blocks the deferred Deactivated close
+            base.OnClosing(e);
+        }
 
         protected override void OnClosed(EventArgs e)
         {

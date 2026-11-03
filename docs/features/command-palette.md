@@ -14,9 +14,9 @@ In `cairo-plus.json`, section `commandPalette`. Comments and trailing commas are
 {
   "commandPalette": {
     "enabled": true,
-    "hotkey": "Alt+Space",                       // needs at least one modifier; Ctrl, Alt, Shift, Win
+    "hotkey": "Alt+Space",                       // needs at least one modifier; Ctrl, Alt, Shift, Win (Meta/Super also accepted)
     "maxResults": 8,                             // 1-50
-    "webSearchUrl": "https://duckduckgo.com/?q={q}",   // http(s) only, must contain {q}
+    "webSearchUrl": "https://duckduckgo.com/?q={q}",   // http(s) only, {q} must come after the host (path, query or fragment)
     "providers": { "commands": true, "apps": true, "calculator": true, "webSearch": true },
     "commands": [
       { "title": "Open notes", "run": "notepad.exe", "args": "%USERPROFILE%\\notes.txt" },
@@ -25,6 +25,9 @@ In `cairo-plus.json`, section `commandPalette`. Comments and trailing commas are
   }
 }
 ```
+
+`run` and `args` may contain `%ENVIRONMENT%` variables. `run` is started directly (no shell) unless it is an existing
+file or folder, which opens with its default app. `providers.apps: false` also hides `App` items from host providers.
 
 Invalid values never stop Cairo: each one produces a finding (for example
 `commandPalette.maxResults 1000 is out of range 1-50; using 50.`) and the default is used.
@@ -78,7 +81,7 @@ clock or culture; the frecency clock is injected.
 
 ## Wiring status
 
-Done and tested on Linux (244 xUnit cases in `Tests/CairoDesktop.Features.Tests/CommandPalette`): fuzzy matcher,
+Done and tested on Linux (259 xUnit cases in `Tests/CairoDesktop.Features.Tests/CommandPalette`): fuzzy matcher,
 calculator, frecency store, config parser, engine and the built-in providers.
 
 Written but **never compiled** (no Windows machine was available): `CairoDesktop.Customization/Features/CommandPalette/`
