@@ -61,6 +61,10 @@ namespace CairoDesktop.Features.ClipboardHistory
                         sb.Append(startOfWord ? char.ToUpperInvariant(c) : char.ToLowerInvariant(c));
                         startOfWord = false;
                     }
+                    else if (char.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark || char.GetUnicodeCategory(c) == UnicodeCategory.SpacingCombiningMark || char.GetUnicodeCategory(c) == UnicodeCategory.EnclosingMark)
+                    {
+                        sb.Append(c); // a combining mark belongs to the letter before it; it must not start a new word
+                    }
                     else
                     {
                         sb.Append(c);
@@ -228,6 +232,14 @@ namespace CairoDesktop.Features.ClipboardHistory
             catch (JsonException ex)
             {
                 return Fail("Invalid JSON: " + ex.Message);
+            }
+            catch (InvalidOperationException)
+            {
+                return Fail("Invalid JSON: text contains an unpaired surrogate.");
+            }
+            catch (ArgumentException)
+            {
+                return Fail("Invalid JSON: text contains an unpaired surrogate.");
             }
         }
 

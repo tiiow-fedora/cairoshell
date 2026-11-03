@@ -265,18 +265,31 @@ namespace CairoDesktop.Features.ClipboardHistory
         public void Load(IEnumerable<ClipboardEntry> entries)
         {
             if (entries == null) throw new ArgumentNullException(nameof(entries));
+            // Materialise before taking the lock: a throwing or re-entrant sequence must neither wipe the history nor run under the gate.
+            List<ClipboardEntry> incoming = entries.ToList();
             HistoryChangedEventArgs evt;
             lock (_gate)
             {
+                DateTimeOffset now = _clock();
                 _items.Clear();
                 int pinned = 0;
+                long pinnedBytes = 0;
                 var seen = new HashSet<long>();
                 var seenText = new HashSet<string>(StringComparer.Ordinal);
-                foreach (ClipboardEntry e in entries)
+                foreach (ClipboardEntry e in incoming)
                 {
                     if (e == null || string.IsNullOrWhiteSpace(e.Text) || !seen.Add(e.Id) || !seenText.Add(e.Text)) continue;
                     ClipboardEntry use = e;
-                    if (use.Pinned && ++pinned > _options.MaxPinned) use = use.WithPinned(false);
+                    // A timestamp in the future (clock skew, hand-edited file) would never age out; treat it as "now".
+                    if (use.CreatedAt > now) use = new ClipboardEntry(use.Id, use.Text, use.Kind, now, use.Pinned, use.SourceApp);
+                    if (use.Pinned)
+                    {
+                        // Pinned entries are never evicted, so the pinned set itself must respect every cap.
+                        if (pinned + 1 > _options.MaxPinned || pinned + 1 > _options.MaxItems || pinnedBytes + use.ByteSize > _options.MaxBytes)
+                            use = use.WithPinned(false);
+                        else { pinned++; pinnedBytes += use.ByteSize; }
+                    }
+
                     _items.Add(use);
                     if (use.Id >= _nextId) _nextId = use.Id + 1;
                 }

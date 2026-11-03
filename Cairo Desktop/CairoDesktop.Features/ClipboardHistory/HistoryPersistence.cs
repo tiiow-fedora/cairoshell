@@ -34,11 +34,14 @@ namespace CairoDesktop.Features.ClipboardHistory
     {
         public const int CurrentVersion = 1;
 
+        private static readonly SensitivePolicy DefaultPolicy = new SensitivePolicy();
+
         /// <summary>Returns the file content, or null when <paramref name="persist"/> is false (nothing may be written).</summary>
         public static string Serialize(IEnumerable<ClipboardEntry> entries, bool persist, SensitivePolicy policy = null)
         {
             if (!persist) return null;
             if (entries == null) throw new ArgumentNullException(nameof(entries));
+            policy = policy ?? DefaultPolicy; // secrets must never reach disk, even if a caller forgot to pass a policy
 
             using (var ms = new MemoryStream())
             {
@@ -75,6 +78,7 @@ namespace CairoDesktop.Features.ClipboardHistory
         {
             var entries = new List<ClipboardEntry>();
             var findings = new List<string>();
+            policy = policy ?? DefaultPolicy;
             if (string.IsNullOrWhiteSpace(json))
             {
                 findings.Add("History file is empty.");
@@ -115,7 +119,9 @@ namespace CairoDesktop.Features.ClipboardHistory
                     foreach (JsonElement item in arr.EnumerateArray())
                     {
                         index++;
-                        ClipboardEntry e = ReadEntry(item, index, findings);
+                        ClipboardEntry e;
+                        try { e = ReadEntry(item, index, findings); }
+                        catch (InvalidOperationException) { findings.Add($"entries[{index}]: text is not valid Unicode, skipped."); continue; }
                         if (e == null) continue;
                         if (!ids.Add(e.Id)) { findings.Add($"entries[{index}]: duplicate id {e.Id} skipped."); continue; }
                         if (policy != null && (policy.LooksSensitive(e.Text) || policy.IsExcludedApp(e.SourceApp)))
