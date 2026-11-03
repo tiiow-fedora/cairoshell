@@ -67,7 +67,7 @@ namespace CairoDesktop.Customization.Themes
             Color border = Get("border", () => ColorParser.Mix(background, text, 0.2));
             Color subtext = Get("subtext", () => ColorParser.Mix(text, background, 0.35));
             Color accent = Get("accent", () => Color.FromRgb(0x3B, 0x82, 0xF6));
-            Color accentText = Get("accentText", () => ColorParser.IsDark(accent) ? Colors.White : Colors.Black);
+            Color accentText = Get("accentText", () => ColorParser.ContrastRatio(accent, Colors.Black) >= ColorParser.ContrastRatio(accent, Colors.White) ? Colors.Black : Colors.White);
             Color urgent = Get("urgent", () => Color.FromRgb(0xE5, 0x53, 0x4B));
 
             Color accentHover = ColorParser.Mix(accent, Colors.White, 0.15);
