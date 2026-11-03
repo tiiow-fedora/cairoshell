@@ -65,50 +65,19 @@ namespace CairoDesktop.Features.MonitorProfiles
             string.Format(CultureInfo.InvariantCulture, "{0} #{1}{2} {3} @{4:0.##}x", DeviceName, Index, IsPrimary ? " primary" : "", Bounds, DpiScale);
 
         /// <summary>
-        /// Numbers monitors the way the existing per-monitor overrides do: primary is 1, the others follow in device
-        /// name order (DISPLAY2 before DISPLAY10). Returns a new list ordered by that number and sets <see cref="Index"/>.
+        /// Numbers monitors the way the existing per-monitor overrides do: primary is 1, the others follow in ordinal,
+        /// case-insensitive device name order, exactly as MonitorOverrides.MonitorInfo.Create counts them (so DISPLAY10
+        /// sorts before DISPLAY2). Returns a new list ordered by that number and sets <see cref="Index"/>.
         /// </summary>
         public static List<MonitorInfo> Number(IEnumerable<MonitorInfo> monitors)
         {
             var ordered = (monitors ?? Enumerable.Empty<MonitorInfo>())
                 .Where(m => m != null)
                 .OrderBy(m => m.IsPrimary ? 0 : 1)
-                .ThenBy(m => m.DeviceName ?? "", NaturalComparer.Instance)
+                .ThenBy(m => m.DeviceName ?? "", StringComparer.OrdinalIgnoreCase)
                 .ToList();
             for (int i = 0; i < ordered.Count; i++) ordered[i].Index = i + 1;
             return ordered;
-        }
-
-        private sealed class NaturalComparer : IComparer<string>
-        {
-            public static readonly NaturalComparer Instance = new NaturalComparer();
-
-            public int Compare(string a, string b)
-            {
-                int i = 0, j = 0;
-                while (i < a.Length && j < b.Length)
-                {
-                    if (char.IsDigit(a[i]) && char.IsDigit(b[j]))
-                    {
-                        int si = i, sj = j;
-                        while (i < a.Length && char.IsDigit(a[i])) i++;
-                        while (j < b.Length && char.IsDigit(b[j])) j++;
-                        string na = a.Substring(si, i - si).TrimStart('0');
-                        string nb = b.Substring(sj, j - sj).TrimStart('0');
-                        if (na.Length != nb.Length) return na.Length.CompareTo(nb.Length);
-                        int c = string.CompareOrdinal(na, nb);
-                        if (c != 0) return c;
-                    }
-                    else
-                    {
-                        int c = char.ToUpperInvariant(a[i]).CompareTo(char.ToUpperInvariant(b[j]));
-                        if (c != 0) return c;
-                        i++;
-                        j++;
-                    }
-                }
-                return (a.Length - i).CompareTo(b.Length - j);
-            }
         }
     }
 }
