@@ -125,8 +125,9 @@ namespace CairoDesktop.Customization.Actions
                         return null;
                 }
             }
-            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception || ex is FileNotFoundException || ex is InvalidOperationException)
+            catch (Exception ex)
             {
+                // Runs from hotkey and click handlers on the UI thread; as the shell, an escaped exception would take down the desktop.
                 return $"{action} '{arg}': {ex.Message}";
             }
 

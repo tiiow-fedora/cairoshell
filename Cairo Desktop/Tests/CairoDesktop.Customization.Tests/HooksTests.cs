@@ -148,6 +148,17 @@ namespace CairoDesktop.Customization.Tests
         }
 
         [Fact]
+        public void Environment_strips_shell_metacharacters_from_pack_text()
+        {
+            var pack = PackWith(@"{ ""name"": ""Evil & calc | \""x\"" %PATH%"", ""font"": { ""family"": ""A>B"" } }", "/packs/Ev&il");
+            var env = HookEnvironment.Build("onStart", ResolvedSettings.Resolve(new CairoPlusConfig { Enabled = true }, pack));
+
+            Assert.Equal("Evil _ calc _ _x_ _PATH_", env["CAIRO_THEME_NAME"]);
+            Assert.Equal("A_B", env["CAIRO_FONT"]);
+            Assert.Equal("", env["CAIRO_THEME_DIR"]);
+        }
+
+        [Fact]
         public void Environment_dark_flag_falls_back_to_the_background()
         {
             var light = PackWith(@"{ ""palette"": { ""background"": ""#F0F0F0"" } }");
