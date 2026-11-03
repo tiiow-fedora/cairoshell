@@ -189,6 +189,9 @@ namespace CairoDesktop.Features.CommandPalette
                             continue;
                         }
 
+                        // A timestamp in the future (clock change, hand edit) would suppress decay; clamp it.
+                        DateTimeOffset loadNow = clock();
+                        if (entry.Last > loadNow) entry.Last = loadNow;
                         store._entries[id] = entry;
                     }
 
