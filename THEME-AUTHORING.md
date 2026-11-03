@@ -188,7 +188,7 @@ The bundled packs are held to the same standard: a unit test fails when any of t
    under a new name with `-2` appended if one with that name exists. The command refuses archives with `..` or
    absolute paths, more than 2000 files or more than 200 MB, and says when the pack defines hooks.
 
-A pack that defines hooks does nothing with them until the recipient reads `theme.json` and sets
+A pack that defines hooks, a `xaml` file or a `command` widget does nothing with them until the recipient reads `theme.json` and sets
 `"allowPackHooks": true` in their `cairo-plus.json`.
 
 To contribute a pack to the repository, copy the folder to

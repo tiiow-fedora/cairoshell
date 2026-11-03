@@ -157,6 +157,8 @@ namespace CairoDesktop.Customization.Widgets
 
                     if (!process.WaitForExit((int)timeout.TotalMilliseconds))
                     {
+                        // Kill() alone leaves whatever cmd.exe started running (a stuck script would pile up every interval).
+                        try { Process.Start(new ProcessStartInfo("taskkill", "/T /F /PID " + process.Id) { UseShellExecute = false, CreateNoWindow = true })?.Dispose(); } catch { }
                         try { process.Kill(); } catch { }
                         throw new TimeoutException($"command took longer than {timeout.TotalSeconds:0}s");
                     }
