@@ -95,6 +95,19 @@ namespace CairoDesktop.Features.CommandPalette
 
                     if (char.ToLowerInvariant(text[j]) != pc) continue;
 
+                    // Never match half of a surrogate pair: a high half needs its low half to match next,
+                    // and a low half may only follow the high half that matched just before it.
+                    bool forceAdjacent = false;
+                    if (char.IsHighSurrogate(text[j]))
+                    {
+                        if (i + 1 >= m || j + 1 >= n || pattern[i + 1] != text[j + 1]) continue;
+                    }
+                    else if (char.IsLowSurrogate(text[j]))
+                    {
+                        if (i == 0 || j == 0 || pattern[i - 1] != text[j - 1]) continue;
+                        forceAdjacent = true;
+                    }
+
                     int gain = MatchBase + PositionBonus(text, j) + (text[j] == pattern[i] ? CaseBonus : 0);
 
                     if (i == 0)
@@ -116,7 +129,7 @@ namespace CairoDesktop.Features.CommandPalette
                         }
                     }
 
-                    if (bestRunIdx >= 0)
+                    if (bestRunIdx >= 0 && !forceAdjacent)
                     {
                         // dp[k] - GapStart - (j - k - 1), written with the running max of dp[k] + k.
                         int viaGap = bestRun - j + 1 - GapStart;
