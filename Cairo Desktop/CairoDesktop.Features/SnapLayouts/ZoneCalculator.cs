@@ -40,10 +40,14 @@ namespace CairoDesktop.Features.SnapLayouts
 
             gap = Math.Max(0, gap);
             outerGap = Math.Max(0, outerGap);
-            int maxOuterX = (workArea.Width - 1) / 2;
-            int maxOuterY = (workArea.Height - 1) / 2;
-            int outer = Math.Min(outerGap, Math.Min(maxOuterX, maxOuterY));
-            Rect area = workArea.Inset(outer);
+
+            // 64-bit throughout: a work area spanning more than int.MaxValue pixels (or a huge gap) must not wrap around.
+            long width = (long)workArea.Right - workArea.Left;
+            long height = (long)workArea.Bottom - workArea.Top;
+            long outer = Math.Min(outerGap, Math.Min((width - 1) / 2, (height - 1) / 2));
+            long areaLeft = workArea.Left + outer, areaTop = workArea.Top + outer;
+            long areaRight = workArea.Right - outer, areaBottom = workArea.Bottom - outer;
+            long areaWidth = areaRight - areaLeft, areaHeight = areaBottom - areaTop;
 
             int gapNear = gap / 2;        // taken by the left/top zone of a shared edge
             int gapFar = gap - gapNear;   // taken by the right/bottom zone
@@ -56,10 +60,10 @@ namespace CairoDesktop.Features.SnapLayouts
                 double fr = Clamp01(Round(z.X + z.W));
                 double fb = Clamp01(Round(z.Y + z.H));
 
-                int left = ToPixel(area.Left, area.Width, fl);
-                int top = ToPixel(area.Top, area.Height, ft);
-                int right = ToPixel(area.Left, area.Width, fr);
-                int bottom = ToPixel(area.Top, area.Height, fb);
+                long left = ToPixel(areaLeft, areaWidth, fl);
+                long top = ToPixel(areaTop, areaHeight, ft);
+                long right = ToPixel(areaLeft, areaWidth, fr);
+                long bottom = ToPixel(areaTop, areaHeight, fb);
 
                 if (gap > 0)
                 {
@@ -69,23 +73,23 @@ namespace CairoDesktop.Features.SnapLayouts
                     if (HasNeighbour(layout, i, Side.Bottom, fb, fl, fr)) bottom -= gapNear;
                 }
 
-                Clamp(ref left, ref right, area.Left, area.Right);
-                Clamp(ref top, ref bottom, area.Top, area.Bottom);
-                result[i] = new Rect(left, top, right, bottom);
+                Clamp(ref left, ref right, areaLeft, areaRight);
+                Clamp(ref top, ref bottom, areaTop, areaBottom);
+                result[i] = new Rect((int)left, (int)top, (int)right, (int)bottom);
             }
 
             return result;
         }
 
         /// <summary>The ideal pixel position of a fractional edge: origin + round(fraction * size), half rounding up.</summary>
-        private static int ToPixel(int origin, int size, double fraction) => origin + (int)Math.Floor(fraction * size + 0.5);
+        private static long ToPixel(long origin, long size, double fraction) => origin + (long)Math.Floor(fraction * size + 0.5);
 
         private static double Round(double v) => Math.Round(v, 9);
 
         private static double Clamp01(double v) => v < 0 ? 0 : v > 1 ? 1 : v;
 
         /// <summary>Keeps at least one pixel of size inside [min, max]. Assumes max - min >= 1.</summary>
-        private static void Clamp(ref int start, ref int end, int min, int max)
+        private static void Clamp(ref long start, ref long end, long min, long max)
         {
             if (start < min) start = min;
             if (end > max) end = max;

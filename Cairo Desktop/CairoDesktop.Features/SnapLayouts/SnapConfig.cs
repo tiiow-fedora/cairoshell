@@ -447,11 +447,11 @@ namespace CairoDesktop.Features.SnapLayouts
             }
 
             if (key == null) return $"'{text}' has modifiers but no key.";
-            if (modifiers == 0 && !IsFunctionKey(key)) return $"'{text}' needs a modifier (Win, Ctrl, Alt or Shift).";
+            if (modifiers == 0 && !IsSafeWithoutModifier(key)) return $"'{text}' needs a modifier (Win, Ctrl, Alt or Shift).";
             return null;
         }
 
-        /// <summary>Order- and case-insensitive form for duplicate detection.</summary>
+        /// <summary>Order-, case- and alias-insensitive form for duplicate detection (aliases as in the real HotkeyParser).</summary>
         public static string Canonical(string text)
         {
             var mods = new SortedSet<string>(StringComparer.Ordinal);
@@ -467,11 +467,45 @@ namespace CairoDesktop.Features.SnapLayouts
                 }
 
                 if (part == "win" || part == "ctrl" || part == "alt" || part == "shift") mods.Add(part);
-                else key = part;
+                else key = CanonicalKey(part);
             }
 
             return string.Join("+", mods) + "|" + key;
         }
+
+        /// <summary>Maps every spelling the real parser resolves to the same Key onto one token.</summary>
+        private static string CanonicalKey(string k)
+        {
+            switch (k)
+            {
+                case "enter": return "return";
+                case "esc": return "escape";
+                case "del": return "delete";
+                case "ins": return "insert";
+                case "pgup": case "prior": return "pageup";
+                case "pgdn": case "next": return "pagedown";
+                case "back": return "backspace";
+                case "=": case "oemplus": return "plus";
+                case "-": case "oemminus": return "minus";
+                case ",": case "oemcomma": return "comma";
+                case ".": case "oemperiod": return "period";
+                case "prtsc": case "snapshot": return "printscreen";
+                case "capital": return "capslock";
+            }
+
+            if (k.Length == 2 && k[0] == 'd' && k[1] >= '0' && k[1] <= '9') return k.Substring(1);
+            return k;
+        }
+
+        // Keys the real parser accepts without a modifier: F1-F24, Pause, Scroll, and Browser*/Media*/Volume*/Launch*/Select* keys.
+        private static readonly string[] BareKeys =
+        {
+            "pause", "scroll", "browserback", "browserforward", "browserrefresh", "browserstop", "browsersearch", "browserfavorites",
+            "browserhome", "volumemute", "volumedown", "volumeup", "medianexttrack", "mediaprevioustrack", "mediastop", "mediaplaypause",
+            "launchmail", "selectmedia", "launchapplication1", "launchapplication2"
+        };
+
+        private static bool IsSafeWithoutModifier(string key) => IsFunctionKey(key) || Array.IndexOf(BareKeys, key.ToLowerInvariant()) >= 0;
 
         private static bool IsFunctionKey(string key)
         {

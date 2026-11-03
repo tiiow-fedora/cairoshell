@@ -33,19 +33,19 @@ namespace CairoDesktop.Features.SnapLayouts
         {
             if (extendedFrameBounds.IsEmpty || windowRect.IsEmpty) return None;
 
-            var insets = new FrameInsets(
-                extendedFrameBounds.Left - windowRect.Left,
-                extendedFrameBounds.Top - windowRect.Top,
-                windowRect.Right - extendedFrameBounds.Right,
-                windowRect.Bottom - extendedFrameBounds.Bottom);
+            // 64-bit: the difference of two ints can overflow (and Math.Abs(int.MinValue) throws).
+            long l = (long)extendedFrameBounds.Left - windowRect.Left;
+            long t = (long)extendedFrameBounds.Top - windowRect.Top;
+            long r = (long)windowRect.Right - extendedFrameBounds.Right;
+            long b = (long)windowRect.Bottom - extendedFrameBounds.Bottom;
 
-            int limit = Math.Max(0, maxPlausible);
-            if (Math.Abs(insets.Left) > limit || Math.Abs(insets.Top) > limit || Math.Abs(insets.Right) > limit || Math.Abs(insets.Bottom) > limit)
+            long limit = Math.Max(0, maxPlausible);
+            if (Math.Abs(l) > limit || Math.Abs(t) > limit || Math.Abs(r) > limit || Math.Abs(b) > limit)
             {
                 return None;
             }
 
-            return insets;
+            return new FrameInsets((int)l, (int)t, (int)r, (int)b);
         }
 
         /// <summary>
@@ -57,11 +57,16 @@ namespace CairoDesktop.Features.SnapLayouts
             return Measure(extendedFrameBounds, windowRect).Apply(desired);
         }
 
-        /// <summary>Grows <paramref name="visible"/> outward by the insets (negative insets shrink it).</summary>
+        /// <summary>Grows <paramref name="visible"/> outward by the insets (negative insets shrink it, but never below 1x1 pixel).</summary>
         public Rect Apply(Rect visible)
         {
             if (visible.IsEmpty) return visible;
-            return new Rect(visible.Left - Left, visible.Top - Top, visible.Right + Right, visible.Bottom + Bottom);
+            long l = (long)visible.Left - Left, t = (long)visible.Top - Top;
+            long r = (long)visible.Right + Right, b = (long)visible.Bottom + Bottom;
+            if (r <= l) r = l + 1;
+            if (b <= t) b = t + 1;
+            return new Rect((int)Math.Max(int.MinValue, Math.Min(int.MaxValue, l)), (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, t)),
+                (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, r)), (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, b)));
         }
     }
 }

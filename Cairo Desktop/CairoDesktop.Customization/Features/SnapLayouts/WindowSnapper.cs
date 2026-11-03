@@ -43,6 +43,7 @@ namespace CairoDesktop.Customization.Features.SnapLayouts
         {
             if (!_config.Enabled) return false;
             _memory.Prune(key => IsWindow(_handles.TryGetValue(key, out IntPtr h) ? h : IntPtr.Zero));
+            DropOrphanHandles();
 
             // Assumption: we want physical pixels. Cairo's manifest is per-monitor-DPI aware, but make this thread so as well
             // (Windows 10 1607+; silently skipped elsewhere) so the rectangles below are never DPI-virtualised.
@@ -59,6 +60,15 @@ namespace CairoDesktop.Customization.Features.SnapLayouts
             {
                 if (previous != IntPtr.Zero) SetThreadDpiAwarenessContext(previous);
             }
+        }
+
+        /// <summary>Handles of entries that were pruned or evicted from the LRU would otherwise stay in _handles forever.</summary>
+        private void DropOrphanHandles()
+        {
+            if (_handles.Count == _memory.Count) return;
+            var stale = new System.Collections.Generic.List<string>();
+            foreach (string key in _handles.Keys) if (!_memory.Peek(key, out _)) stale.Add(key);
+            foreach (string key in stale) _handles.Remove(key);
         }
 
         private bool ExecuteCore(string action)
@@ -116,8 +126,9 @@ namespace CairoDesktop.Customization.Features.SnapLayouts
                 return false; // typically ERROR_ACCESS_DENIED: the window is elevated and we are not (UIPI). Not an error to report.
             }
 
-            GetWindowRect(hwnd, out RECT after); // the window may have clamped to its minimum size; remember what really happened
-            _memory.Remember(w.Key, before, after.ToRect(), target, w.Layout.Id);
+            // The window may have clamped to its minimum size; remember what really happened (fall back to what we asked for).
+            SnapRect applied = GetWindowRect(hwnd, out RECT after) ? after.ToRect() : toSet;
+            _memory.Remember(w.Key, before, applied, target, w.Layout.Id);
             _handles[w.Key] = hwnd;
             return true;
         }
@@ -125,6 +136,8 @@ namespace CairoDesktop.Customization.Features.SnapLayouts
         private bool Restore(IntPtr hwnd, WindowInfo w)
         {
             if (!_memory.Peek(w.Key, out SnapMemory.Entry e)) return false;
+            if ((w.State & (WindowStates.Minimized | WindowStates.FullScreen)) != 0) return false; // SetWindowPos would corrupt/fight these
+            if ((w.State & WindowStates.Maximized) != 0) ShowWindow(hwnd, SW_RESTORE); // SetWindowPos on a maximized window leaves it flagged maximized
             SnapRect r = e.OriginalRect;
             if (!SetWindowPos(hwnd, IntPtr.Zero, r.Left, r.Top, r.Width, r.Height, SWP_NOZORDER | SWP_NOACTIVATE)) return false;
             _memory.Forget(w.Key);
@@ -151,7 +164,8 @@ namespace CairoDesktop.Customization.Features.SnapLayouts
             if (pid == (uint)_ownPid) return false;
             var cls = new StringBuilder(64);
             GetClassName(hwnd, cls, cls.Capacity);
-            switch (cls.ToString())
+            string className = cls.ToString();
+            switch (className)
             {
                 case "Progman": case "WorkerW": case "Shell_TrayWnd": case "Shell_SecondaryTrayWnd": return false;
             }
@@ -170,17 +184,20 @@ namespace CairoDesktop.Customization.Features.SnapLayouts
             if (IsZoomed(hwnd)) state |= WindowStates.Maximized;
             if (IsIconic(hwnd)) state |= WindowStates.Minimized;
             if ((style & WS_THICKFRAME) == 0 || (exStyle & WS_EX_TOOLWINDOW) != 0) state |= WindowStates.Excluded; // can't be resized / is a palette
-            if (rect.ToRect().Equals(mi.rcMonitor.ToRect()) && (state & WindowStates.Maximized) == 0) state |= WindowStates.FullScreen;
+            // A maximized framed window is the work area plus its border, never exactly the monitor; F11 browsers are maximized AND monitor-sized.
+            if (rect.ToRect().Equals(mi.rcMonitor.ToRect())) state |= WindowStates.FullScreen;
 
             var desc = new MonitorDescriptor(mi.szDevice, mi.rcMonitor.Right - mi.rcMonitor.Left, mi.rcMonitor.Bottom - mi.rcMonitor.Top, (mi.dwFlags & 1) != 0);
             _layoutByMonitor.TryGetValue(desc.DeviceName, out string chosen);
-            SnapLayout layout = LayoutPicker.Pick(_catalog, desc, _config.MonitorLayouts, chosen ?? _config.DefaultLayout);
+            // A layout picked with cycleLayout must beat the monitors map; LayoutPicker would rank the map above it.
+            SnapLayout layout = _catalog.Find(chosen) ?? LayoutPicker.Pick(_catalog, desc, _config.MonitorLayouts, _config.DefaultLayout);
             SnapRect work = mi.rcWork.ToRect();
 
             info = new WindowInfo
             {
                 // Process name guards against handle reuse; the title is left out on purpose so retitled windows keep their memory.
-                Key = WindowKey.Make(hwnd.ToInt64(), ProcessName((int)pid)),
+                // HWNDs are recycled; process name + pid + class makes a stale entry hit a different window very unlikely.
+                Key = WindowKey.Make(hwnd.ToInt64(), ProcessName((int)pid) + "#" + pid + "#" + className),
                 MonitorName = desc.DeviceName, WindowRect = rect.ToRect(), WorkArea = work, State = state, Layout = layout,
                 Zones = ZoneCalculator.Compute(layout, work, _config.Gap, _config.OuterGap)
             };
