@@ -276,6 +276,20 @@ namespace CairoDesktop.Customization.Tests
         }
 
         [Fact]
+        public void Lists_which_packs_follow_the_windows_app_mode()
+        {
+            using (var dir = new TempDir())
+            {
+                dir.Write("bundled/Pair/theme.json", "{ \"name\": \"Pair\", \"light\": { \"palette\": { \"background\": \"#FFFFFF\" } } }");
+                dir.Write("bundled/Plain/theme.json", "{ \"name\": \"Plain\" }");
+
+                string output = Run(Context(dir), "--list-themes").output;
+                Assert.Contains("Pair [light/dark]", output);
+                Assert.DoesNotContain("Plain [light/dark]", output);
+            }
+        }
+
+        [Fact]
         public void Active_marker_ignored_when_cairo_plus_is_off()
         {
             using (var dir = new TempDir())

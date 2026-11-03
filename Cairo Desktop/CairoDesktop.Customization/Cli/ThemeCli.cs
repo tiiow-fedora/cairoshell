@@ -134,11 +134,11 @@ namespace CairoDesktop.Customization.Cli
                 string marker = string.Equals(pack.Id, active, StringComparison.OrdinalIgnoreCase) ? "*" : " ";
                 string source = IsUserPack(pack, context) ? "user   " : "bundled";
                 string text = pack.Error != null ? "ERROR: " + pack.Error : pack.Manifest.Description;
-                output.WriteLine($"{marker} {pack.Id.PadRight(width)}  {source}  {pack.DisplayName}{(string.IsNullOrWhiteSpace(text) ? "" : " - " + text)}");
+                output.WriteLine($"{marker} {pack.Id.PadRight(width)}  {source}  {pack.DisplayName}{(ThemeAppearance.HasVariants(pack.Manifest) ? " [light/dark]" : "")}{(string.IsNullOrWhiteSpace(text) ? "" : " - " + text)}");
             }
 
             output.WriteLine();
-            output.WriteLine("* = active. Switch with: CairoDesktop.exe --apply-theme <name>");
+            output.WriteLine("* = active. [light/dark] = follows the Windows app mode. Switch with: CairoDesktop.exe --apply-theme <name>");
             return 0;
         }
 

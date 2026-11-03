@@ -42,7 +42,7 @@ dotnet build "Cairo Desktop/Cairo Desktop.csproj" -f net6.0-windows -p:TargetFra
 The output is `Cairo Desktop/bin/x64/Debug/net6.0-windows/win-x64/CairoDesktop.exe`. Use `-f net480
 -p:TargetFrameworks=net480` for the .NET Framework build.
 
-Run the tests (xUnit, about 136 tests: config parsing, JSON editing, palette expansion, hotkey parsing, bar layout, theme validator, hooks, theme archive and scaffold, theme commands):
+Run the tests (xUnit, about 220 test cases: config parsing, JSON editing, palette expansion, hotkey parsing, bar layout, theme validator and findings, light/dark variants, monitor overrides, bundled packs, hooks, theme archive and scaffold, theme commands):
 
 ```bash
 dotnet test "Tests/CairoDesktop.Customization.Tests/CairoDesktop.Customization.Tests.csproj" -f net6.0-windows -p:TargetFrameworks=net6.0-windows -p:Platform=x64
@@ -63,7 +63,7 @@ and **Atom One**. The others:
 **Nord**, **Gruvbox** (own layout and widgets), **Tokyo Night** (floating rounded bars),
 **Mocha Ember** (floating taskbar), **Dracula** (stat widgets), **Rose Pine** (floating rounded bars),
 **Solarized Dark** (network and battery widgets), **Everforest** (floating taskbar with a centred task list)
-**Catppuccin Latte** (a light theme) and **Kanagawa** (CPU and memory widgets). `CairoDesktop.exe --list-themes` lists them.
+**Catppuccin Latte** (a light theme) and **Kanagawa** (CPU and memory widgets). `CairoDesktop.exe --list-themes` lists them and marks the ones that follow the Windows app mode.
 
 ## The config file
 
@@ -504,35 +504,64 @@ Conflicts, if any, will be in those spots. Every hook is a no-op while Cairo Plu
 ## Status and next steps
 
 **Pillars.** All four are implemented: theme packs (colours, fonts, wallpaper, icons, radii, bar position and size,
-effects), bar layout and widgets, shapes and effects, and hotkeys plus hooks and commands. Nine packs are bundled.
+effects), bar layout and widgets, shapes and effects, and hotkeys plus hooks and commands. Thirteen packs are bundled.
 
-**Added in the latest session** (branch `claude/cloud-burn`): theme validator and `--validate-theme`, `--list-themes`,
+**Added in the first `claude/cloud-burn` session:** theme validator and `--validate-theme`, `--list-themes`,
 `--new-theme`, `--export-theme`, `--install-theme`, hooks with `CAIRO_*` environment variables and the
 `allowPackHooks` gate, five more bundled packs, a derived `accentText` that picks black or white by contrast, and
 a fix to Mocha Ember's unreadable accent text that the new validator test found.
 
-**What was verified, and how.** That session ran in a Linux container where `dotnet-install.sh` and NuGet were
+**Added in the second session:**
+- Light and dark variants of a pack that follow the Windows app mode (`"light"`/`"dark"` in `theme.json`,
+  `"appearance"` in `cairo-plus.json`, `CAIRO_APPEARANCE` for hooks). Logic is in `Themes/ThemeAppearance.cs`; the
+  Windows registry read is `Themes/WindowsAppearance.cs`; `CairoPlusService` re-applies when Windows reports a
+  settings change and the mode flipped.
+- Per-monitor bar settings (`"monitors"`; `Config/MonitorOverrides.cs`, `ResolvedSettings.GetBar`).
+- `Themes/ThemeFindings.cs`: the validator's findings arranged for display, shown in the Theme Packs tab for the
+  selected pack. The validator now also checks each light and dark variant as applied.
+- `Config/ConfigChecker.cs`: reports an unknown `appearance` value and malformed `monitors` selectors in the problem list.
+- Bundled packs: Catppuccin, Ayu and Atom One (all with day and night versions) and Kanagawa.
+- [THEME-AUTHORING.md](THEME-AUTHORING.md), and commented `appearance`, `monitors` and `light` examples in the templates.
+
+**What was verified, and how.** Both sessions ran in a Linux container where `dotnet-install.sh` and NuGet were
 blocked, so WPF, ManagedShell and xUnit could not be restored and **nothing was built as a whole**. Instead, all
-non-UI files (config, theme manifest, palette, validator, hooks model, archive, scaffold, CLI) were compiled on
-.NET 10 against a small `Color` stand-in, and their tests (104 test cases, including 32 of the earlier ones)
-ran through a throwaway xUnit-compatible runner: all passed. Not compiled anywhere: `CairoPlusService` (hook firing),
-`ActionRunner` (environment variables), `CairoPlusCommandLine` (console output) and `Program.cs`, and the project
-file change for zip references on net480. Review those for typos first.
+non-UI files (config, theme manifest, palette, validator, findings, appearance, monitor overrides, hooks model,
+archive, scaffold, CLI) were compiled on .NET 10 against a small `Color` stand-in, and their tests (187 test
+cases) ran through a throwaway xUnit-compatible runner: all passed. The bundled packs, including the four new
+ones, pass the validator with no errors or warnings.
+
+Not compiled anywhere, so review for typos first: `CairoPlusService` (hook firing, appearance handling,
+`DescribeMonitor`), `ActionRunner` (environment variables), `CairoPlusCommandLine` (console output), `Program.cs`,
+`Settings/ThemePacksPanel.xaml` and `.xaml.cs` (findings section), and the project file change for zip references on net480.
 
 **To test on Windows** (build, then run the tests, then try):
 1. `dotnet build` and the test command above. Fix any compile error in the files named in the previous paragraph.
-2. Switch through all nine packs in Settings > Theme Packs; check the light pack (Catppuccin Latte) for unreadable text.
-3. Hooks: add an `onThemeApplied` `run` hook that writes `%CAIRO_THEME%` and a colour to a file; switch themes.
+2. Switch through all thirteen packs in Settings > Theme Packs; check the light packs (Catppuccin Latte, and the
+   light versions of Catppuccin, Ayu and Atom One) for unreadable text.
+3. Light and dark: apply Catppuccin. Switch Settings > Personalization > Colors > app mode between light and dark.
+   Confirm the colours and wallpaper change within a second without a restart, and that the Theme Packs tab shows
+   "follows light and dark mode". Set `"appearance": "dark"` in `cairo-plus.json` and confirm the Windows mode no
+   longer matters. Add an `onThemeApplied` hook that writes `%CAIRO_APPEARANCE%` to a file and confirm it updates
+   on a mode switch. Expect Cairo's native menus to stay dark after going light (documented limitation).
+4. Per monitor (needs two monitors): add `"monitors": { "secondary": { "menuBar": { "opacity": 0.5 } } }` and confirm
+   only the secondary menu bar changes. Try `"2"`, `"DISPLAY2"` (use the device name Windows shows) and `"*"`.
+   Add a bad selector (`"left"`) and confirm it appears in the problem list.
+5. Theme Packs tab: select each pack and confirm the "Checks for the selected pack" section shows "No problems";
+   copy a pack, break a colour and a wallpaper path, and confirm the error and warning lines appear in colour.
+6. Hooks: add an `onThemeApplied` `run` hook that writes `%CAIRO_THEME%` and a colour to a file; switch themes.
    Confirm the file updates, that `onStart` fires once, and that a hook editing `cairo-plus.json` does not loop.
-4. Set a pack hook and confirm it is blocked until `"allowPackHooks": true`.
-5. From a terminal: `--list-themes`, `--validate-theme`, `--new-theme "Test" --from Nord`, `--export-theme Test`,
-   `--install-theme Test.zip`. Also run one from the Run dialog to check the message-box fallback.
-6. Net Framework 4.8 build: confirm the zip commands compile (the `System.IO.Compression` references).
+7. Set a pack hook and confirm it is blocked until `"allowPackHooks": true`.
+8. From a terminal: `--list-themes` (check the `[light/dark]` marker), `--validate-theme`,
+   `--new-theme "Test" --from Nord`, `--export-theme Test`, `--install-theme Test.zip`. Also run one from the Run
+   dialog to check the message-box fallback.
+9. Net Framework 4.8 build: confirm the zip commands compile (the `System.IO.Compression` references), and that
+   `Microsoft.Win32.SystemEvents` and `ManagedShell.AppBar.AppBarWindow.Screen` resolve in `CairoPlusService`.
 
 **Next steps.**
-- Show validator findings for the active pack in the Theme Packs tab (needs XAML work; not done because it can't be checked on Linux).
-- A theme preview or gallery in the settings tab, and a "next/previous theme" widget.
-- Per-monitor overrides, and a dedicated pack-level `startup` animation or sound.
+- A theme preview or gallery in the settings tab (the tab now lists findings but shows no screenshot), and a
+  "next/previous theme" widget.
+- Per-monitor wallpapers, and a way to hide a bar on one monitor.
+- A dedicated pack-level `startup` animation or sound.
 - Optional scripting beyond hooks: a small expression language for widgets, or a documented PowerShell module.
-- Theme packs that follow Windows dark/light mode (a day/night pair of palettes).
+- A time-of-day schedule as an alternative to following the Windows app mode.
 - Run `--validate-theme` in CI against the bundled packs (the unit test already does this).
