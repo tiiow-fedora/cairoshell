@@ -8,7 +8,7 @@ namespace CairoDesktop.Features.CommandPalette
     ///
     /// Ranking: for a non-empty text, the match score is the best of the fuzzy score on the title, 60% of the score on
     /// a keyword and 40% of the score on the subtitle; items with no match are dropped. The final score is
-    /// <c>match * (1 + boost)</c> where boost is 0.5 * log2(1 + frecency) capped at 1.5, so frecency reorders
+    /// <c>match * (1 + boost)</c> where boost is 0.5 * log2(1 + frecency) capped at 1.0 (so at most double), so frecency reorders
     /// comparable matches but cannot resurrect a poor one. With empty text every item has the same base score, so the
     /// list is simply "most used first, then alphabetical". Items with a <see cref="PaletteItem.PinnedScore"/> skip
     /// matching and frecency. Ties break on frecency, then title (ordinal, ignoring case), then id, then provider order.
@@ -157,7 +157,7 @@ namespace CairoDesktop.Features.CommandPalette
             }
 
             double frecency = _frecency == null ? 0 : _frecency.GetScore(item.Id);
-            double boost = Math.Min(1.5, 0.5 * Math.Log(1 + frecency, 2));
+            double boost = Math.Min(1.0, 0.5 * Math.Log(1 + frecency, 2));
             return new Candidate(item, match * (1 + boost), indices, frecency, provider, providerIndex);
         }
 
