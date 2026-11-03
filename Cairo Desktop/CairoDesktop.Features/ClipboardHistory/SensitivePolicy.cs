@@ -84,7 +84,7 @@ namespace CairoDesktop.Features.ClipboardHistory
     {
         private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
 
-        private static readonly Regex CardCandidate = new Regex(@"(?<!\d)(?:\d[ \-]?){12,18}\d(?!\d)", RegexOptions.CultureInvariant, RegexTimeout);
+        private static readonly Regex CardCandidate = new Regex(@"(?<!\d)(?:\d[\p{Zs}\-]?){12,18}\d(?!\d)", RegexOptions.CultureInvariant, RegexTimeout);
         private static readonly Regex AwsKey = new Regex(@"(?<![A-Za-z0-9])(AKIA|ASIA)[0-9A-Z]{16}(?![A-Za-z0-9])", RegexOptions.CultureInvariant, RegexTimeout);
         private static readonly Regex PrivateKey = new Regex(@"-----BEGIN [A-Z0-9 ]*PRIVATE KEY( BLOCK)?-----", RegexOptions.CultureInvariant, RegexTimeout);
         private static readonly Regex Jwt = new Regex(@"(?<![A-Za-z0-9_\-])eyJ[A-Za-z0-9_\-]{5,}\.eyJ[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]*", RegexOptions.CultureInvariant, RegexTimeout);
@@ -152,17 +152,37 @@ namespace CairoDesktop.Features.ClipboardHistory
             string whole = text.Trim();
             foreach (Match m in CardCandidate.Matches(text))
             {
-                bool hasSeparator = m.Value.IndexOf(' ') >= 0 || m.Value.IndexOf('-') >= 0;
                 // Bare digit runs only count when the clip is just the number; otherwise ids and timestamps inside prose would trip.
-                if (!hasSeparator && m.Value != whole) continue;
-                string digits = new string(m.Value.Where(char.IsDigit).ToArray());
-                if (digits.Length < 13 || digits.Length > 19) continue;
-                if (digits.Distinct().Count() == 1) continue;
-                if (digits.Length == 13 && digits[0] == '1') continue; // epoch milliseconds
-                if (IsLuhnValid(digits)) return true;
+                if (m.Value.All(char.IsDigit))
+                {
+                    if (m.Value == whole && IsCardDigits(m.Value)) return true;
+                    continue;
+                }
+
+                // The greedy match may swallow digits that follow the card ("4111 1111 1111 1111 12/25"), so also try
+                // every run of whole separator-delimited groups inside it.
+                string[] groups = m.Value.Split(new[] { '-' }.Concat(m.Value.Where(char.IsSeparator)).Distinct().ToArray(), StringSplitOptions.RemoveEmptyEntries);
+                for (int start = 0; start < groups.Length; start++)
+                {
+                    var sb = new StringBuilder();
+                    for (int end = start; end < groups.Length; end++)
+                    {
+                        sb.Append(groups[end]);
+                        if (sb.Length > 19) break;
+                        if (end > start && IsCardDigits(sb.ToString())) return true;
+                    }
+                }
             }
 
             return false;
+        }
+
+        private static bool IsCardDigits(string digits)
+        {
+            if (digits.Length < 13 || digits.Length > 19) return false;
+            if (digits.Distinct().Count() == 1) return false;
+            if (digits.Length == 13 && digits[0] == '1') return false; // epoch milliseconds
+            return IsLuhnValid(digits);
         }
 
         /// <summary>Luhn checksum over a string of ASCII digits. Non-digits make it false.</summary>
