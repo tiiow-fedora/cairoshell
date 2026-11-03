@@ -21,6 +21,7 @@ exactly like stock Cairo.
 - [Hotkeys](#hotkeys)
 - [Hooks](#hooks)
 - [Theme authoring tools](#theme-authoring-tools)
+- [Settings bundles](#settings-bundles)
 - [Command line](#command-line)
 - [Pulling upstream updates](#pulling-upstream-updates)
 - [Known limitations](#known-limitations)
@@ -42,7 +43,7 @@ dotnet build "Cairo Desktop/Cairo Desktop.csproj" -f net6.0-windows -p:TargetFra
 The output is `Cairo Desktop/bin/x64/Debug/net6.0-windows/win-x64/CairoDesktop.exe`. Use `-f net480
 -p:TargetFrameworks=net480` for the .NET Framework build.
 
-Run the tests (xUnit, about 220 test cases: config parsing, JSON editing, palette expansion, hotkey parsing, bar layout, theme validator and findings, light/dark variants, monitor overrides, bundled packs, hooks, theme archive and scaffold, theme commands):
+Run the tests (xUnit, about 260 test cases: config parsing, JSON editing, palette expansion, hotkey parsing, bar layout, theme validator and findings, light/dark variants, monitor overrides, bundled packs, hooks, theme archive and scaffold, theme commands, settings bundles):
 
 ```bash
 dotnet test "Tests/CairoDesktop.Customization.Tests/CairoDesktop.Customization.Tests.csproj" -f net6.0-windows -p:TargetFrameworks=net6.0-windows -p:Platform=x64
@@ -454,6 +455,35 @@ numbers, unknown layout ids and widget types, and invalid hooks.
 `--install-theme` refuses archives with `..` or absolute paths, more than 2000 files or more than 200 MB, never
 overwrites an existing pack (the new one gets `-2`), and tells you if the pack defines hooks.
 
+## Settings bundles
+
+A settings bundle is one `.zip` holding your `cairo-plus.json` (comments intact) and your own theme packs, for
+moving a setup to another PC or keeping a backup. Bundled packs are not included; every install has them.
+
+```
+CairoDesktop.exe --export-settings [file.zip] [--no-packs]
+CairoDesktop.exe --import-settings file.zip [--dry-run] [--no-packs] [--trust-code]
+```
+
+Importing treats the zip as untrusted:
+
+- **Backup.** The current `cairo-plus.json` is copied to `cairo-plus.json.bak-<timestamp>` before the new one is
+  written (atomically, so a live reload never sees half a file). Nothing is written if the bundle is rejected.
+- **Programs don't come along by default.** `hooks`, `hotkeys` that `launch` or `run` something, `command` widgets and
+  `allowPackHooks` can run programs, so they are set to `null` (or `false`) on import and listed. `--trust-code` keeps them.
+  Read the bundle's `cairo-plus.json` before trusting it.
+- **Packs are never overwritten.** An identical pack is skipped. A different pack with the same name is installed as
+  `Name-2`, and `"theme"` in the imported config is changed to match.
+- **Checks.** Entries outside `manifest.json`, `cairo-plus.json` and `ThemePacks/<name>/` are refused, as are `..` and
+  absolute paths, more than 2000 files or more than 200 MB unpacked. A bundle from a newer Cairo Plus (higher
+  `version` in `manifest.json`) is refused rather than half-read.
+- **Warnings.** Config mistakes (`appearance`, `monitors`), a `"theme"` that isn't installed, and absolute `appIcons`
+  paths are reported. `--dry-run` shows all of this without changing anything (it can't tell identical packs from
+  different ones, so it reports a same-named pack as renamed).
+
+The code is in `Settings/SettingsBundle.cs` (no UI types, so it is unit-tested on any platform) and
+`Cli/SettingsCli.cs`. Tests: `SettingsBundleTests.cs`, `SettingsCliTests.cs`.
+
 ## Command line
 
 ```
@@ -461,7 +491,7 @@ CairoDesktop.exe --apply-theme <pack>    activate a pack (turns Cairo Plus on); 
 CairoDesktop.exe --reload-config         re-apply cairo-plus.json
 ```
 
-The theme authoring commands are listed [above](#theme-authoring-tools).
+The theme authoring commands are listed [above](#theme-authoring-tools) and the settings bundle commands [here](#settings-bundles).
 
 Both edit or touch `cairo-plus.json`, keeping your comments, and exit immediately if Cairo is already running;
 the running copy reloads live. If Cairo isn't running, it starts with the new settings.
@@ -522,6 +552,12 @@ a fix to Mocha Ember's unreadable accent text that the new validator test found.
 - `Config/ConfigChecker.cs`: reports an unknown `appearance` value and malformed `monitors` selectors in the problem list.
 - Bundled packs: Catppuccin, Ayu and Atom One (all with day and night versions) and Kanagawa.
 - [THEME-AUTHORING.md](THEME-AUTHORING.md), and commented `appearance`, `monitors` and `light` examples in the templates.
+
+**Added in the `cairo-theming` session:** settings bundles (`--export-settings`, `--import-settings`; see
+[Settings bundles](#settings-bundles)). Unlike earlier sessions, this one could install the .NET 8 SDK from apt and
+reach NuGet, so `SettingsBundle`, `SettingsCli` and their 43 tests were compiled against the real `Config/`, `Themes/`
+and `Cli/` sources (with a small `Color` stand-in for WPF) and run under xUnit on Linux: all passed. The one-line
+dispatch change in `CairoPlusCommandLine.cs` is not compiled (it needs WPF).
 
 **What was verified, and how.** Both sessions ran in a Linux container where `dotnet-install.sh` and NuGet were
 blocked, so WPF, ManagedShell and xUnit could not be restored and **nothing was built as a whole**. Instead, all
