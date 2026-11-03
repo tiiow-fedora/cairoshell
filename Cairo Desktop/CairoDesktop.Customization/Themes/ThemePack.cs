@@ -30,6 +30,9 @@ namespace CairoDesktop.Customization.Themes
             Error = error;
         }
 
+        /// <summary>The same pack folder with a different (for example light or dark variant) manifest.</summary>
+        public ThemePack WithManifest(ThemePackManifest manifest) => new ThemePack(Id, Folder, manifest, Error);
+
         /// <summary>Resolves a pack-relative path; refuses paths that escape the pack folder.</summary>
         public string ResolvePath(string relative)
         {

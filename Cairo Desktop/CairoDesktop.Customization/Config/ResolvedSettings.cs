@@ -14,6 +14,9 @@ namespace CairoDesktop.Customization.Config
 
         public ThemePack Pack { get; private set; }
 
+        /// <summary>True when the pack's light variant (if it has one) is in effect.</summary>
+        public bool UsesLightAppearance { get; private set; }
+
         public BarConfig MenuBar { get; private set; }
 
         public BarConfig Taskbar { get; private set; }
@@ -23,6 +26,15 @@ namespace CairoDesktop.Customization.Config
         public Dictionary<string, JsonElement> Widgets { get; private set; }
 
         public List<HotkeyConfig> Hotkeys { get; private set; }
+
+        private Dictionary<string, MonitorConfig> _monitors;
+
+        /// <summary>The bar settings for one monitor: the layered menu bar or taskbar settings plus any matching "monitors" entries.</summary>
+        public BarConfig GetBar(bool taskbar, MonitorInfo monitor)
+        {
+            if (!Enabled) return null;
+            return MonitorOverrides.Apply(taskbar ? Taskbar : MenuBar, _monitors, monitor, taskbar);
+        }
 
         /// <summary>Hooks that will run: the pack's (only if allowed) followed by the user's.</summary>
         public HooksConfig Hooks { get; private set; } = new HooksConfig();
@@ -43,17 +55,22 @@ namespace CairoDesktop.Customization.Config
         };
 
         /// <param name="pack">The pack named by config.Theme, or null. Ignored if it failed to parse.</param>
-        public static ResolvedSettings Resolve(CairoPlusConfig config, ThemePack pack)
+        /// <param name="windowsUsesLightMode">Whether Windows apps are in light mode; picks the pack's light or dark variant when "appearance" is auto.</param>
+        public static ResolvedSettings Resolve(CairoPlusConfig config, ThemePack pack, bool windowsUsesLightMode = false)
         {
             if (config == null || !config.Enabled)
             {
                 return Disabled;
             }
 
+            bool light = ThemeAppearance.IsLight(config.Appearance, windowsUsesLightMode);
+            pack = ThemeAppearance.Apply(pack, light);
             var manifest = pack?.Manifest;
             var resolved = new ResolvedSettings
             {
                 Enabled = true,
+                UsesLightAppearance = light,
+                _monitors = config.Monitors,
                 Pack = manifest != null ? pack : null,
                 MenuBar = BarConfig.Merge(manifest?.MenuBar, config.MenuBar),
                 Taskbar = BarConfig.Merge(manifest?.Taskbar, config.Taskbar),

@@ -13,6 +13,7 @@ namespace CairoDesktop.Customization.Themes
     ///   CAIRO_THEME_NAME        the pack's display name
     ///   CAIRO_THEME_DIR         absolute path of the pack folder
     ///   CAIRO_THEME_DARK        1 or 0 (from the pack's darkMode, else from the background colour)
+    ///   CAIRO_APPEARANCE        light or dark: the variant in effect (empty when Cairo Plus is off)
     ///   CAIRO_WALLPAPER         absolute path of the pack's wallpaper, if any
     ///   CAIRO_FONT              the pack's font family, if any
     ///   CAIRO_COLOR_BACKGROUND, CAIRO_COLOR_SURFACE, CAIRO_COLOR_OVERLAY, CAIRO_COLOR_BORDER, CAIRO_COLOR_TEXT,
@@ -29,6 +30,7 @@ namespace CairoDesktop.Customization.Themes
                 ["CAIRO_THEME_NAME"] = "",
                 ["CAIRO_THEME_DIR"] = "",
                 ["CAIRO_THEME_DARK"] = "",
+                ["CAIRO_APPEARANCE"] = settings != null && settings.Enabled ? (settings.UsesLightAppearance ? "light" : "dark") : "",
                 ["CAIRO_WALLPAPER"] = "",
                 ["CAIRO_FONT"] = ""
             };

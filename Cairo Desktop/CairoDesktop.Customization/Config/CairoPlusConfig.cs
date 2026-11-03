@@ -15,9 +15,21 @@ namespace CairoDesktop.Customization.Config
         /// <summary>Folder name of the active theme pack, or null for none.</summary>
         public string Theme { get; set; }
 
+        /// <summary>
+        /// "auto" (default), "light" or "dark". With auto, a theme pack's "light" or "dark" variant follows the
+        /// Windows app mode. Packs without variants are not affected.
+        /// </summary>
+        public string Appearance { get; set; }
+
         public BarConfig MenuBar { get; set; }
 
         public BarConfig Taskbar { get; set; }
+
+        /// <summary>
+        /// Bar settings for particular monitors, by selector ("primary", "secondary", "2", "DISPLAY2", "*").
+        /// They apply on top of "menuBar" and "taskbar".
+        /// </summary>
+        public Dictionary<string, MonitorConfig> Monitors { get; set; }
 
         public AnimationConfig Animations { get; set; }
 

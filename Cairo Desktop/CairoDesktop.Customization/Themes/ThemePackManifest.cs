@@ -50,6 +50,12 @@ namespace CairoDesktop.Customization.Themes
 
         /// <summary>Commands to run when the pack is applied. Only run when cairo-plus.json has "allowPackHooks": true.</summary>
         public HooksConfig Hooks { get; set; }
+
+        /// <summary>Changes applied on top of the pack while Windows (or cairo-plus.json "appearance") is in light mode.</summary>
+        public ThemeVariant Light { get; set; }
+
+        /// <summary>Changes applied on top of the pack while Windows (or cairo-plus.json "appearance") is in dark mode.</summary>
+        public ThemeVariant Dark { get; set; }
     }
 
     public sealed class FontConfig
