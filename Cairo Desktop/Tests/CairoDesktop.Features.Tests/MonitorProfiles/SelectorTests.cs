@@ -46,13 +46,13 @@ namespace CairoDesktop.Features.Tests.MonitorProfiles
         }
 
         [Fact]
-        public void Numbering_PrimaryFirst_ThenNaturalNameOrder()
+        public void Numbering_PrimaryFirst_ThenOrdinalIgnoreCaseNameOrder_LikeMonitorOverrides()
         {
             var p = Mon.Make(@"\\.\DISPLAY3", 0, 0, 1920, 1080, true);
             var d10 = Mon.Make(@"\\.\DISPLAY10", 1920, 0, 1920, 1080);
             var d2 = Mon.Make(@"\\.\DISPLAY2", 3840, 0, 1920, 1080);
             var ordered = MonitorInfo.Number(new[] { d10, p, d2 });
-            Assert.Equal(new[] { @"\\.\DISPLAY3", @"\\.\DISPLAY2", @"\\.\DISPLAY10" }, ordered.Select(m => m.DeviceName).ToArray());
+            Assert.Equal(new[] { @"\\.\DISPLAY3", @"\\.\DISPLAY10", @"\\.\DISPLAY2" }, ordered.Select(m => m.DeviceName).ToArray());
             Assert.Equal(new[] { 1, 2, 3 }, ordered.Select(m => m.Index).ToArray());
         }
 

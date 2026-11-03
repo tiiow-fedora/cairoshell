@@ -74,9 +74,13 @@ namespace CairoDesktop.Features.MonitorProfiles
                         if (inner.ValueKind == JsonValueKind.Null) return result;
                         section = inner;
                     }
-                    else
+                    else if (TryGet(root, "default", out _) || TryGet(root, "rules", out _))
                     {
                         path = "$";
+                    }
+                    else
+                    {
+                        return result; // a whole config file without the section: nothing to read, and not ours to flag
                     }
                     ParseSection(section, path, result);
                 }
@@ -141,7 +145,17 @@ namespace CairoDesktop.Features.MonitorProfiles
                 if (n.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(n.GetString())) rule.Name = n.GetString().Trim();
                 else Add(result, FindingSeverity.Warning, path + ".name", "should be a non-empty string");
             }
-            if (TryGet(el, "match", out JsonElement m) && m.ValueKind != JsonValueKind.Null) rule.Match = ParseMatch(m, path + ".match", result);
+            if (TryGet(el, "match", out JsonElement m) && m.ValueKind != JsonValueKind.Null)
+            {
+                // A condition that cannot be read would silently widen the rule (down to every monitor), so skip the rule instead.
+                int errorsBefore = result.Findings.Count(f => f.Severity == FindingSeverity.Error);
+                rule.Match = ParseMatch(m, path + ".match", result);
+                if (result.Findings.Count(f => f.Severity == FindingSeverity.Error) > errorsBefore)
+                {
+                    Add(result, FindingSeverity.Error, path, "its 'match' has invalid values, so the rule is skipped rather than applied to more monitors than intended");
+                    return null;
+                }
+            }
             if (TryGet(el, "profile", out JsonElement p) && p.ValueKind != JsonValueKind.Null) rule.Settings = ParseSettings(p, path + ".profile", result);
             return rule;
         }
@@ -157,7 +171,7 @@ namespace CairoDesktop.Features.MonitorProfiles
             Unknown(el, MatchKeys, path, result);
             if (TryGet(el, "primary", out JsonElement v) && v.ValueKind != JsonValueKind.Null) sel.Primary = Bool(v, path + ".primary", result);
             if (TryGet(el, "index", out v) && v.ValueKind != JsonValueKind.Null) sel.Index = Int(v, path + ".index", result);
-            if (TryGet(el, "deviceName", out v) && v.ValueKind != JsonValueKind.Null) sel.DeviceName = Str(v, path + ".deviceName", result);
+            if (TryGet(el, "deviceName", out v) && v.ValueKind != JsonValueKind.Null) sel.DeviceName = Str(v, path + ".deviceName", result)?.Trim();
             if (TryGet(el, "minWidth", out v) && v.ValueKind != JsonValueKind.Null) sel.MinWidth = Positive(v, path + ".minWidth", result);
             if (TryGet(el, "maxWidth", out v) && v.ValueKind != JsonValueKind.Null) sel.MaxWidth = Positive(v, path + ".maxWidth", result);
             if (TryGet(el, "minHeight", out v) && v.ValueKind != JsonValueKind.Null) sel.MinHeight = Positive(v, path + ".minHeight", result);
@@ -250,16 +264,18 @@ namespace CairoDesktop.Features.MonitorProfiles
 
         private static bool TryGet(JsonElement obj, string name, out JsonElement value)
         {
+            // Last one wins, as when ConfigLoader deserializes the same file.
+            bool found = false;
+            value = default(JsonElement);
             foreach (JsonProperty p in obj.EnumerateObject())
             {
                 if (string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
                 {
                     value = p.Value;
-                    return true;
+                    found = true;
                 }
             }
-            value = default(JsonElement);
-            return false;
+            return found;
         }
 
         private static void Unknown(JsonElement obj, IEnumerable<string> known, string path, ProfilesParseResult result)

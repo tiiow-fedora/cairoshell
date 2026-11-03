@@ -104,10 +104,10 @@ namespace CairoDesktop.Features.Tests.MonitorProfiles
         {
             var r = ProfilesConfigParser.Parse(@"{ ""default"": { ""position"": ""middle"", ""themeVariant"": 3 },
                 ""rules"": [ { ""match"": { ""orientation"": ""diagonal"" } } ] }");
-            Assert.Equal(3, r.Findings.Count(f => f.Severity == FindingSeverity.Error));
+            Assert.Equal(4, r.Findings.Count(f => f.Severity == FindingSeverity.Error)); // 3 bad values + the skipped rule
             Assert.Null(r.Config.Default.Position);
             Assert.Null(r.Config.Default.ThemeVariant);
-            Assert.Null(r.Config.Rules[0].Match.Orientation);
+            Assert.Empty(r.Config.Rules);
             Assert.True(Has(r, FindingSeverity.Error, "top, bottom, left, right"));
         }
 
@@ -246,6 +246,40 @@ namespace CairoDesktop.Features.Tests.MonitorProfiles
             Assert.Equal(TaskbarEdge.Left, map[@"\\.\DISPLAY3"].Settings.Position);
             Assert.Equal(32, map[@"\\.\DISPLAY1"].Settings.Height);
             Assert.Equal(false, map[@"\\.\DISPLAY1"].Settings.Floating);
+        }
+
+        [Theory]
+        [InlineData(@"""match"": ""primary""")]
+        [InlineData(@"""match"": { ""primary"": ""yes"" }")]
+        [InlineData(@"""match"": { ""minWidth"": ""big"", ""primary"": false }")]
+        [InlineData(@"""match"": { ""orientation"": ""sideways"" }")]
+        public void RuleWithInvalidMatch_IsSkipped_NotWidenedToEveryMonitor(string match)
+        {
+            var r = ProfilesConfigParser.Parse(@"{ ""rules"": [ { " + match + @", ""profile"": { ""height"": 20 } } ] }");
+            Assert.True(r.HasErrors);
+            Assert.Empty(r.Config.Rules);
+        }
+
+        [Fact]
+        public void WholeFileWithoutSection_IsEmptyConfig_WithoutUnknownKeyNoise()
+        {
+            var r = ProfilesConfigParser.Parse(@"{ ""menuBar"": { ""height"": 5 }, ""monitors"": {} }");
+            Assert.Empty(r.Findings);
+            Assert.Empty(r.Config.Rules);
+        }
+
+        [Fact]
+        public void DeviceName_IsTrimmed()
+        {
+            var r = ProfilesConfigParser.Parse(@"{ ""rules"": [ { ""match"": { ""deviceName"": "" DISPLAY2 "" }, ""profile"": { ""height"": 20 } } ] }");
+            Assert.Equal("DISPLAY2", r.Config.Rules[0].Match.DeviceName);
+        }
+
+        [Fact]
+        public void DuplicateKeys_LastWins_LikeConfigLoader()
+        {
+            var r = ProfilesConfigParser.Parse(@"{ ""default"": { ""height"": 20, ""height"": 40 } }");
+            Assert.Equal(40, r.Config.Default.Height);
         }
     }
 }
