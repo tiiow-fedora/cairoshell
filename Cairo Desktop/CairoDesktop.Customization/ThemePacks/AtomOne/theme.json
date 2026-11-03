@@ -1,0 +1,44 @@
+// Atom One: One Dark in dark mode, One Light in light mode. Follows the Windows light/dark app mode.
+{
+  "name": "Atom One",
+  "author": "Cairo Plus",
+  "description": "One Dark in dark mode, One Light in light mode, floating rounded bars",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#282C34",
+    "surface":    "#2F343E",
+    "overlay":    "#3E4451",
+    "border":     "#4B5263",
+    "text":       "#ABB2BF",
+    "subtext":    "#8A91A0",
+    "accent":     "#61AFEF",
+    "accentText": "#21252B",
+    "urgent":     "#E06C75",
+  },
+  "resources": { "MenuTopBorderBrush": "#C678DD" },
+  "wallpaper": { "file": "wallpaper-night.jpg", "style": "fill" },
+
+  "light": {
+    "palette": {
+      "background": "#FAFAFA",
+      "surface":    "#F0F0F1",
+      "overlay":    "#E5E5E6",
+      "border":     "#C8C9CD",
+      "text":       "#383A42",
+      "subtext":    "#696C77",
+      "accent":     "#3568E0",
+      "accentText": "#FFFFFF",
+      "urgent":     "#CA1243",
+    },
+    "resources": { "MenuTopBorderBrush": "#A626A4" },
+    "wallpaper": { "file": "wallpaper-day.jpg", "style": "fill" },
+  },
+
+  "font": { "family": "Consolas", "size": 12 },
+
+  "menuBar": { "floating": true, "margin": 5, "cornerRadius": 10, "spacing": 6, "opacity": 0.96 },
+  "taskbar": { "floating": true, "margin": 5, "cornerRadius": 10, "opacity": 0.96 },
+  "animations": { "enabled": true },
+}

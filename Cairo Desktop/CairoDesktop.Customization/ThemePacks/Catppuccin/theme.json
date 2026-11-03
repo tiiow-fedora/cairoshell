@@ -1,0 +1,48 @@
+// Catppuccin: Mocha at night, Latte by day. Follows the Windows light/dark app mode (https://catppuccin.com).
+{
+  "name": "Catppuccin",
+  "author": "Cairo Plus",
+  "description": "Mocha in dark mode, Latte in light mode, rounded floating taskbar",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#1E1E2E",
+    "surface":    "#313244",
+    "overlay":    "#45475A",
+    "border":     "#585B70",
+    "text":       "#CDD6F4",
+    "subtext":    "#A6ADC8",
+    "accent":     "#89B4FA",
+    "accentText": "#1E1E2E",
+    "urgent":     "#F38BA8",
+  },
+  "resources": { "MenuTopBorderBrush": "#CBA6F7" },
+  "wallpaper": { "file": "wallpaper-night.jpg", "style": "fill" },
+
+  "light": {
+    "palette": {
+      "background": "#EFF1F5",
+      "surface":    "#E6E9EF",
+      "overlay":    "#DCE0E8",
+      "border":     "#BCC0CC",
+      "text":       "#4C4F69",
+      "subtext":    "#6C6F85",
+      "accent":     "#1E66F5",
+      "accentText": "#FFFFFF",
+      "urgent":     "#D20F39",
+    },
+    "resources": { "MenuTopBorderBrush": "#8839EF" },
+    "wallpaper": { "file": "wallpaper-day.jpg", "style": "fill" },
+  },
+
+  "font": { "family": "Segoe UI", "size": 12 },
+
+  "menuBar": {
+    "opacity": 0.97,
+    "layout": { "right": ["widget:network", "tray", "volume", "actionCenter", "clock", "search"] },
+  },
+  "taskbar": { "floating": true, "margin": 8, "cornerRadius": 14, "opacity": 0.95 },
+  "widgets": { "network": { "type": "network", "format": "↓ {down}  ↑ {up}" } },
+  "animations": { "enabled": true, "durationMs": 240 },
+}

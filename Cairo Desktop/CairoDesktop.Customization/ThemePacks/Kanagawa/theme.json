@@ -1,0 +1,34 @@
+// Kanagawa: ink-wash dark palette inspired by Hokusai's The Great Wave (https://github.com/rebelot/kanagawa.nvim).
+{
+  "name": "Kanagawa",
+  "author": "Cairo Plus",
+  "description": "Dark ink blues with warm paper text, CPU and memory in the menu bar",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#1F1F28",
+    "surface":    "#2A2A37",
+    "overlay":    "#363646",
+    "border":     "#54546D",
+    "text":       "#DCD7BA",
+    "subtext":    "#A6A18B",
+    "accent":     "#7E9CD8",
+    "accentText": "#16161D",
+    "urgent":     "#E46876",
+  },
+  "resources": { "MenuTopBorderBrush": "#957FB8" },
+
+  "font": { "family": "Segoe UI", "size": 12 },
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  "menuBar": {
+    "spacing": 6,
+    "layout": { "right": ["widget:cpu", "widget:memory", "tray", "volume", "search"] },
+  },
+  "widgets": {
+    "cpu":    { "type": "cpu", "style": "both" },
+    "memory": { "type": "memory", "style": "both" },
+  },
+  "animations": { "enabled": true },
+}

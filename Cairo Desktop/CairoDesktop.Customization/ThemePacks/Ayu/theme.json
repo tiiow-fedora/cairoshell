@@ -1,0 +1,54 @@
+// Ayu: Mirage in dark mode, Light in light mode. Follows the Windows light/dark app mode (https://github.com/ayu-theme).
+{
+  "name": "Ayu",
+  "author": "Cairo Plus",
+  "description": "Mirage in dark mode, Light in light mode, warm yellow and orange accents",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#1F2430",
+    "surface":    "#292E3C",
+    "overlay":    "#343B4D",
+    "border":     "#464F66",
+    "text":       "#CCCAC2",
+    "subtext":    "#9AA0AE",
+    "accent":     "#FFCC66",
+    "accentText": "#1F2430",
+    "urgent":     "#F28779",
+  },
+  "resources": { "MenuTopBorderBrush": "#5CCFE6" },
+  "wallpaper": { "file": "wallpaper-night.jpg", "style": "fill" },
+
+  "light": {
+    "palette": {
+      "background": "#FCFCFC",
+      "surface":    "#F3F4F5",
+      "overlay":    "#E7E8E9",
+      "border":     "#C9CBCE",
+      "text":       "#4D5156",
+      "subtext":    "#6C7076",
+      "accent":     "#FF9940",
+      "accentText": "#000000",
+      "urgent":     "#D93F3F",
+    },
+    "resources": { "MenuTopBorderBrush": "#399EE6" },
+    "wallpaper": { "file": "wallpaper-day.jpg", "style": "fill" },
+  },
+
+  "font": { "family": "Cascadia Code", "size": 12 },
+
+  "menuBar": {
+    "spacing": 8,
+    "layout": {
+      "left":   ["cairoMenu", "programsMenu", "placesMenu"],
+      "center": ["widget:clock"],
+      "right":  ["widget:battery", "tray", "volume", "search"],
+    },
+  },
+  "widgets": {
+    "clock":   { "type": "clock", "format": "ddd d MMM  HH:mm" },
+    "battery": { "type": "battery", "hideWhenNoBattery": true },
+  },
+  "animations": { "enabled": true },
+}

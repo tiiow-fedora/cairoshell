@@ -28,7 +28,7 @@ namespace CairoDesktop.Customization.Tests
         public void Bundled_packs_have_no_errors_or_warnings()
         {
             var packs = ThemePackLoader.Discover(new[] { TestPaths.BundledPacks });
-            Assert.True(packs.Count >= 9);
+            Assert.True(packs.Count >= 13);
 
             foreach (var pack in packs)
             {
