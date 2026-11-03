@@ -47,6 +47,9 @@ namespace CairoDesktop.Customization.Themes
         public AnimationConfig Animations { get; set; }
 
         public Dictionary<string, JsonElement> Widgets { get; set; }
+
+        /// <summary>Commands to run when the pack is applied. Only run when cairo-plus.json has "allowPackHooks": true.</summary>
+        public HooksConfig Hooks { get; set; }
     }
 
     public sealed class FontConfig

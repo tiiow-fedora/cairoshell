@@ -26,6 +26,15 @@ namespace CairoDesktop.Customization.Config
 
         public List<HotkeyConfig> Hotkeys { get; set; }
 
+        /// <summary>Commands to run when Cairo starts, the theme changes or settings reload.</summary>
+        public HooksConfig Hooks { get; set; }
+
+        /// <summary>
+        /// Lets the active theme pack's own "hooks" run. Off by default: a downloaded pack should not be able
+        /// to run programs on your PC until you say so.
+        /// </summary>
+        public bool AllowPackHooks { get; set; }
+
         /// <summary>Per-app icon overrides: exe file name (e.g. "notepad.exe") to an image path.</summary>
         public Dictionary<string, string> AppIcons { get; set; }
     }

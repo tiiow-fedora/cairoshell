@@ -17,13 +17,7 @@ namespace CairoDesktop.Customization.Themes
     public static class ThemeLayerBuilder
     {
         /// <summary>Cairo's own UI icons. A pack can override any of these via "icons" or icons/&lt;Key&gt;.png.</summary>
-        public static readonly string[] IconKeys =
-        {
-            "MenuIcon", "SearchIcon", "ActionCenterIcon", "VolumeIcon", "VolumeLowIcon", "VolumeOffIcon",
-            "VolumeMuteIcon", "DateTimeIcon", "DesktopOverlayIcon", "TaskListMenuIcon", "TaskViewIcon",
-            "DesktopToolbarBackIcon", "DesktopToolbarUpIcon", "DesktopToolbarForwardIcon",
-            "DesktopToolbarBrowseIcon", "DesktopToolbarHomeIcon"
-        };
+        public static readonly string[] IconKeys = ThemeSchema.IconKeys;
 
         private static readonly string[] IconExtensions = { ".png", ".ico", ".jpg", ".bmp" };
 

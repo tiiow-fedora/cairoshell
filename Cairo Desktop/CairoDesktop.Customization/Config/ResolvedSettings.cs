@@ -24,6 +24,12 @@ namespace CairoDesktop.Customization.Config
 
         public List<HotkeyConfig> Hotkeys { get; private set; }
 
+        /// <summary>Hooks that will run: the pack's (only if allowed) followed by the user's.</summary>
+        public HooksConfig Hooks { get; private set; } = new HooksConfig();
+
+        /// <summary>True when the active pack defines hooks that were not run because "allowPackHooks" is off.</summary>
+        public bool PackHooksBlocked { get; private set; }
+
         /// <summary>Exe name to absolute image path.</summary>
         public Dictionary<string, string> AppIcons { get; private set; }
 
@@ -32,7 +38,8 @@ namespace CairoDesktop.Customization.Config
             Enabled = false,
             Widgets = new Dictionary<string, JsonElement>(),
             Hotkeys = new List<HotkeyConfig>(),
-            AppIcons = new Dictionary<string, string>()
+            AppIcons = new Dictionary<string, string>(),
+            Hooks = new HooksConfig()
         };
 
         /// <param name="pack">The pack named by config.Theme, or null. Ignored if it failed to parse.</param>
@@ -55,6 +62,10 @@ namespace CairoDesktop.Customization.Config
                 Hotkeys = config.Hotkeys ?? new List<HotkeyConfig>(),
                 AppIcons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             };
+
+            bool packHasHooks = manifest?.Hooks != null && !manifest.Hooks.IsEmpty;
+            resolved.PackHooksBlocked = packHasHooks && !config.AllowPackHooks;
+            resolved.Hooks = HooksConfig.Combine(packHasHooks && config.AllowPackHooks ? manifest.Hooks : null, config.Hooks);
 
             if (manifest?.Widgets != null)
             {

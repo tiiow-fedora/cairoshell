@@ -85,6 +85,33 @@ namespace CairoDesktop.Customization.Themes
             return (0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B) / 255.0;
         }
 
+        /// <summary>WCAG contrast ratio between two colours, 1 (identical) to 21 (black on white). Alpha is ignored.</summary>
+        public static double ContrastRatio(Color a, Color b)
+        {
+            double la = WcagLuminance(a);
+            double lb = WcagLuminance(b);
+            double lighter = Math.Max(la, lb);
+            double darker = Math.Min(la, lb);
+            return (lighter + 0.05) / (darker + 0.05);
+        }
+
+        private static double WcagLuminance(Color c)
+        {
+            return 0.2126 * Linear(c.R) + 0.7152 * Linear(c.G) + 0.0722 * Linear(c.B);
+        }
+
+        private static double Linear(byte channel)
+        {
+            double v = channel / 255.0;
+            return v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+        }
+
+        /// <summary>"#RRGGBB" (alpha dropped), the form shell scripts and other programs expect.</summary>
+        public static string ToRgbHex(Color c)
+        {
+            return $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+        }
+
         public static bool IsDark(Color c)
         {
             return Luminance(c) < 0.5;
