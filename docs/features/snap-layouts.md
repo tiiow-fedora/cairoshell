@@ -5,7 +5,7 @@ work area (the screen minus the taskbar and menu bar). Hotkeys move the foregrou
 zones, or put the window back where it was.
 
 > **Status: logic written and unit-tested, not wired in.** The library (`CairoDesktop.Features/SnapLayouts`) and its
-> tests (171 cases, run on Linux with `dotnet test`) are complete. The Win32 adapter
+> tests (190 cases, run on Linux with `dotnet test`) are complete. The Win32 adapter
 > (`CairoDesktop.Customization/Features/SnapLayouts/WindowSnapper.cs`) has only been compiled as a syntax check on
 > .NET 8 and has never run on Windows. Nothing registers the hotkeys or reads the config section yet; see
 > [Wiring status](#wiring-status).
@@ -47,7 +47,7 @@ Comments and trailing commas are accepted. A bad value never stops the rest of t
 reports a finding (warning or error, with a path such as `snapLayouts.layouts[1]`) and falls back to the default or skips
 only the offending layout, hotkey or monitor entry. Custom layouts are skipped when a zone is missing a number, lies
 outside 0..1, has no area, overlaps another zone without `allowOverlap`, or reuses an existing id. An empty or `null`
-hotkey disables that action; two actions on the same keys disable the later one.
+hotkey disables that action; two actions on the same key disable the later one (key aliases such as `PgDn`/`PageDown` or `Enter`/`Return` count as the same key).
 
 ## Built-in layouts
 
@@ -72,7 +72,7 @@ halves-lr      halves-tb     thirds           quarters      main-stack
 +----+----+    +---------+   +---+---+---+    +----+----+   +------+----+
 ```
 
-Zones are numbered in reading order (left to right, top to bottom for grids); that is the order `nextZone` follows.
+Built-in zones are numbered in reading order (left to right, top to bottom for grids); custom layouts use the order the zones are written. That is the order `nextZone` follows.
 The library can also generate grids with per-column and per-row weights (`BuiltInLayouts.Grid`); the config does not
 expose that yet, but a custom layout covers the same ground.
 
@@ -104,7 +104,7 @@ expected to declare per-monitor awareness (not verified here), and the adapter a
 ## What gets skipped
 
 The adapter returns `false` and does nothing for: Cairo's own windows (same process), the desktop and taskbar
-(`Progman`, `WorkerW`, `Shell_TrayWnd`, `Shell_SecondaryTrayWnd`), invisible, minimized and full-screen windows, windows
+(`Progman`, `WorkerW`, `Shell_TrayWnd`, `Shell_SecondaryTrayWnd`), invisible, minimized and full-screen windows (a window exactly the size of its monitor, even if maximized, such as an F11 browser), windows
 without a sizing border and tool windows, hung windows (`IsHungAppWindow`), and maximized windows unless
 `snapMaximized` is on. Elevated windows cannot be moved by a non-elevated Cairo (UIPI makes `SetWindowPos` fail); that is
 reported as `false`, not an exception.
