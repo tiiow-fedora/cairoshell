@@ -19,7 +19,7 @@ A clipboard recorder sees passwords. This feature is built so that is the except
 
 | Heuristic | Blocks | Deliberately allows |
 |---|---|---|
-| Card number | 13-19 digits that pass the Luhn check, alone or grouped by spaces/dashes (`4111 1111 1111 1111`) | Failing Luhn, all-same digits, a bare digit run inside prose, 13-digit epoch-millisecond timestamps |
+| Card number | 13-19 digits that pass the Luhn check, alone or grouped by spaces (including non-breaking/narrow spaces) or dashes (`4111 1111 1111 1111`), also when other digits follow it (`... 1111 12/25`) | Failing Luhn, all-same digits, a bare digit run inside prose, 13-digit epoch-millisecond timestamps |
 | AWS key | `AKIA...` / `ASIA...` plus 16 upper-case alphanumerics | Near misses, lower case |
 | Private key | `-----BEGIN ... PRIVATE KEY-----` | Public keys and certificates |
 | JWT | `eyJ...` `.` `eyJ...` `.` signature (also inside a `Bearer` header) | A lone `eyJ...` segment |
@@ -38,7 +38,7 @@ default with a finding, unknown keys produce a warning):
   "enabled": true,
   "maxItems": 100,          // 1..1000, pinned entries count too
   "maxBytes": 5242880,      // total UTF-8 bytes, 1024..2147483647
-  "ttlMinutes": 1440,       // unpinned clips older than this are dropped; 0 = never
+  "ttlMinutes": 1440,       // unpinned clips at least this old are dropped; 0 = never
   "persist": false,         // true writes %LOCALAPPDATA%\Cairo Desktop\clipboard-history.json
   "excludeApps": ["KeePass*", "1Password*", "Bitwarden*"],   // replaces the default list; [] = none
   "pinnedMax": 20,          // pinned clips are never evicted, so they are capped separately
@@ -55,6 +55,11 @@ Defaults: `enabled` false, `persist` false, `ttlMinutes` 1440, the password-mana
 - Copying the same text again moves the existing entry to the top and keeps its pin.
 - Eviction removes the **oldest unpinned** entry first, by count and by total bytes. Pinned entries are never evicted.
   A clip that cannot fit even with every unpinned entry gone is rejected instead of emptying the history for nothing.
+- Expiry runs on every add, when the popup opens, once a minute, and before each save, so an idle history does not
+  keep (or write to disk) clips past their TTL. A clip exactly `ttlMinutes` old is expired.
+- Loading a history enforces the same caps: surplus pinned entries (over `pinnedMax`, `maxItems` or `maxBytes`) are
+  unpinned, and timestamps in the future are treated as "now" so they still age out.
+- The persistence functions apply a default sensitive policy even if the caller passes none.
 - List order: pinned first, then newest. If the system clock moves backwards, order is unaffected and nothing
   expires early.
 
