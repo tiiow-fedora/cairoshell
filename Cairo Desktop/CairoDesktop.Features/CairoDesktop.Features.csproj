@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Cairo Plus feature logic: command palette, monitor profiles, clipboard history, snap layouts.
+    Deliberately free of WPF, Win32 and Cairo references so every line is unit-testable on any OS.
+    The WPF/Win32 adapters live in CairoDesktop.Customization (Features\ folder) and only call into this.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>CairoDesktop.Features</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CairoDesktop.Features.Tests" />
+  </ItemGroup>
+
+</Project>

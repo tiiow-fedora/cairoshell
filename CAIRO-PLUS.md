@@ -24,6 +24,7 @@ exactly like stock Cairo.
 - [Settings bundles](#settings-bundles)
 - [Command line](#command-line)
 - [Pulling upstream updates](#pulling-upstream-updates)
+- [Expansion features](#expansion-features)
 - [Known limitations](#known-limitations)
 - [Status and next steps](#status-and-next-steps)
 
@@ -518,6 +519,10 @@ git merge upstream/master
 ```
 
 Conflicts, if any, will be in those spots. Every hook is a no-op while Cairo Plus is off.
+
+## Expansion features
+
+A command palette, per-monitor taskbar profiles, a clipboard history widget and window snap layouts exist as tested logic with not-yet-enabled Windows adapters. See [docs/features](docs/features/README.md).
 
 ## Known limitations
 
