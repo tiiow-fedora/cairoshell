@@ -93,8 +93,40 @@ namespace CairoDesktop.Customization.Themes
             CheckAnimations(manifest.Animations, issues);
             CheckWidgets(manifest, widgetTypes, issues);
             CheckHooks(manifest.Hooks, issues);
+            CheckVariant("light", pack, manifest, true, options, issues);
+            CheckVariant("dark", pack, manifest, false, options, issues);
 
             return issues;
+        }
+
+        /// <summary>
+        /// Checks a light or dark variant as it will look when applied (pack plus variant), reporting only the
+        /// findings the plain pack doesn't already have, under "light." or "dark.".
+        /// </summary>
+        private static void CheckVariant(string name, ThemePack pack, ThemePackManifest manifest, bool light, ThemeValidationOptions options, List<ThemeIssue> issues)
+        {
+            ThemeVariant variant = light ? manifest.Light : manifest.Dark;
+            if (variant == null) return;
+
+            if (variant.IsEmpty)
+            {
+                issues.Add(new ThemeIssue(IssueSeverity.Info, name, "sets nothing, so the pack is used unchanged."));
+                return;
+            }
+
+            var effective = ThemeAppearance.Apply(manifest, light);
+            var found = new List<ThemeIssue>();
+            CheckPalette(effective, found);
+            CheckResources(effective, options, found);
+            CheckWallpaper(pack, effective, found);
+
+            var seen = new HashSet<string>(issues.Select(i => i.ToString()), StringComparer.Ordinal);
+            foreach (var issue in found)
+            {
+                if (seen.Contains(issue.ToString())) continue;
+                string location = string.IsNullOrEmpty(issue.Location) ? name : name + "." + issue.Location;
+                issues.Add(new ThemeIssue(issue.Severity, location, issue.Message));
+            }
         }
 
         private static void CheckMetadata(ThemePack pack, ThemePackManifest manifest, List<ThemeIssue> issues)
