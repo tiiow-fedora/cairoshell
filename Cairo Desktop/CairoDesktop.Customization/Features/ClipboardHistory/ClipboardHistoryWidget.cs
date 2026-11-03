@@ -29,6 +29,7 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
         private readonly SensitivePolicy _policy;
         private readonly ClipboardMonitor _monitor;
         private readonly DispatcherTimer _saveTimer;
+        private readonly DispatcherTimer _expireTimer;
         private readonly string _file = Path.Combine(CairoPlusPaths.DataFolder, "clipboard-history.json");
 
         private ClipboardHistoryService(WidgetContext c)
@@ -38,9 +39,9 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
             {
                 Enabled = c.Options.GetBool("enabled", true),     // placing the widget is the opt-in
                 MaxItems = (int)Math.Max(1, Math.Min(1000, c.Options.GetNumber("maxItems", 100))),
-                TtlMinutes = (int)Math.Max(0, c.Options.GetNumber("ttlMinutes", 1440)),
+                TtlMinutes = (int)Math.Max(0, Math.Min(525600, c.Options.GetNumber("ttlMinutes", 1440))), // clamp: an out-of-range double cast to int wraps negative, which would mean "never expire"
                 Persist = c.Options.GetBool("persist", false),
-                PinnedMax = (int)Math.Max(0, c.Options.GetNumber("pinnedMax", 20)),
+                PinnedMax = (int)Math.Max(0, Math.Min(200, c.Options.GetNumber("pinnedMax", 20))),
                 PreviewLength = (int)Math.Max(10, Math.Min(500, c.Options.GetNumber("previewLength", 80))),
             };
             if (c.Options.Has("excludeApps"))
@@ -53,7 +54,12 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
             Store.Changed += OnStoreChanged;
 
             _saveTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = TimeSpan.FromSeconds(3) };
-            _saveTimer.Tick += (s, e) => { _saveTimer.Stop(); SaveToDisk(c); };
+            _saveTimer.Tick += (s, e) => { _saveTimer.Stop(); if (!_released) SaveToDisk(c); };
+
+            // The store only expires on writes; without this, clips older than the TTL stay visible (and get saved) while idle.
+            _expireTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher) { Interval = TimeSpan.FromMinutes(1) };
+            _expireTimer.Tick += (s, e) => Store.Expire();
+            _expireTimer.Start();
 
             _monitor = new ClipboardMonitor(_dispatcher);
             _monitor.TextCaptured += OnCaptured;
@@ -79,13 +85,14 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
 
         public void Release(WidgetContext c)
         {
-            if (--_refs > 0) return;
+            if (_released || --_refs > 0) return;
             _instance = null;
             _released = true;
             Store.Changed -= OnStoreChanged;
             _monitor.TextCaptured -= OnCaptured;
             _monitor.Dispose();
             _saveTimer.Stop();
+            _expireTimer.Stop();
             if (Config.Persist) SaveToDisk(c);
         }
 
@@ -93,21 +100,29 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
 
         private void OnCaptured(string text, string app, ClipboardFormatFlags flags)
         {
-            if (_policy.Evaluate(text, app, flags).Allowed) Store.Add(text, app);
+            try
+            {
+                if (_policy.Evaluate(text, app, flags).Allowed) Store.Add(text, app);
+            }
+            catch (Exception)
+            {
+                // Runs inside a DispatcherTimer tick: an exception here would take the shell down. Drop the clip instead
+                // (never log it: its content must not reach log files).
+            }
             // A refused clip is dropped silently and never logged: its content must not leak into log files either.
         }
 
-        private bool _notifyQueued;
-        private bool _released;
+        private int _notifyQueued; // Interlocked: the store may raise Changed from any thread
+        private volatile bool _released;
 
         private void OnStoreChanged(object sender, HistoryChangedEventArgs e)
         {
             // Raised outside the store's lock, possibly on any thread: hop to the UI and coalesce bursts.
-            if (_notifyQueued) return;
-            _notifyQueued = true;
+            if (_released || _dispatcher.HasShutdownStarted) return;
+            if (System.Threading.Interlocked.Exchange(ref _notifyQueued, 1) == 1) return;
             _dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
             {
-                _notifyQueued = false;
+                System.Threading.Interlocked.Exchange(ref _notifyQueued, 0);
                 if (_released) return;
                 Changed?.Invoke();
                 if (Config.Persist) { _saveTimer.Stop(); _saveTimer.Start(); }
@@ -128,10 +143,18 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
 
         private void SaveToDisk(WidgetContext c)
         {
-            string json = HistoryPersistence.Serialize(Store.Snapshot(), Config.Persist, _policy);
-            if (json == null) return;
-            string error = AtomicFile.WriteToDisk(_file, json);
-            if (error != null) c.Log(error);
+            try
+            {
+                Store.Expire(); // never write clips that are already past their TTL
+                string json = HistoryPersistence.Serialize(Store.Snapshot(), Config.Persist, _policy);
+                if (json == null) return;
+                string error = AtomicFile.WriteToDisk(_file, json);
+                if (error != null) c.Log(error);
+            }
+            catch (Exception ex)
+            {
+                c.Log("could not save clipboard history: " + ex.Message); // runs from a timer tick and from Dispose: must not throw
+            }
         }
     }
 
@@ -165,6 +188,19 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
         {
             _context = context;
             _service = ClipboardHistoryService.Acquire(context);
+            try
+            {
+                Initialize(context);
+            }
+            catch
+            {
+                _service.Release(context); // a half-built widget is never disposed by the host
+                throw;
+            }
+        }
+
+        private void Initialize(WidgetContext context)
+        {
 
             var label = new TextBlock { Text = context.Options.GetString("label", "📋") };
             WidgetTheme.ApplyText(label, context.Bar);
@@ -225,7 +261,7 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
         private void OnButtonClick(object sender, RoutedEventArgs e)
         {
             _popup.IsOpen = !_popup.IsOpen;
-            if (_popup.IsOpen) { _search.Text = ""; Refresh(); }
+            if (_popup.IsOpen) { _service.Store.Expire(); _search.Text = ""; Refresh(); }
         }
 
         private void OnSearchChanged(object sender, TextChangedEventArgs e) => Refresh();

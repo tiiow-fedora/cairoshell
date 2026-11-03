@@ -75,7 +75,7 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == WM_CLIPBOARDUPDATE)
+            if (msg == WM_CLIPBOARDUPDATE && !_disposed)
             {
                 handled = true;
                 _attempt = 0;
@@ -104,7 +104,7 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
                 flags = ReadFlags(Clipboard.GetDataObject());
                 text = Clipboard.GetText();
             }
-            catch (System.Runtime.InteropServices.ExternalException)
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException || ex is InvalidOperationException || ex is IOException)
             {
                 if (++_attempt < RetryDelaysMs.Length)
                 {
@@ -116,6 +116,7 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
             }
 
             _lastSeenSequence = seq;
+            if (string.IsNullOrEmpty(text)) return;
             TextCaptured?.Invoke(text, GetOwnerProcessName(), flags);
         }
 
@@ -123,9 +124,16 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
         {
             if (data == null) return ClipboardFormatFlags.None;
             bool exclude = data.GetDataPresent("ExcludeClipboardContentFromMonitorProcessing");
-            bool noHistory = data.GetDataPresent("CanIncludeInClipboardHistory") && ReadDword(data.GetData("CanIncludeInClipboardHistory")) == 0;
-            bool noCloud = data.GetDataPresent("CanUploadToCloudClipboard") && ReadDword(data.GetData("CanUploadToCloudClipboard")) == 0;
+            bool noHistory = FlagIsZero(data, "CanIncludeInClipboardHistory");
+            bool noCloud = FlagIsZero(data, "CanUploadToCloudClipboard");
             return new ClipboardFormatFlags(exclude, noHistory, noCloud);
+        }
+
+        private static bool FlagIsZero(IDataObject data, string format)
+        {
+            if (!data.GetDataPresent(format)) return false;
+            try { return ReadDword(data.GetData(format)) == 0; }
+            catch (Exception) { return true; } // the marker is there but unreadable: fail closed, it is a password manager's "do not record"
         }
 
         private static int ReadDword(object value)
@@ -162,7 +170,7 @@ namespace CairoDesktop.Customization.Features.ClipboardHistory
             if (_disposed) return;
             _disposed = true;
             if (_dispatcher.CheckAccess()) Teardown();
-            else _dispatcher.Invoke(Teardown); // HwndSource must be destroyed on the thread that created it
+            else if (!_dispatcher.HasShutdownStarted) _dispatcher.Invoke(Teardown); // after shutdown Invoke would silently skip it; the window dies with the thread // HwndSource must be destroyed on the thread that created it
         }
 
         private void Teardown()
