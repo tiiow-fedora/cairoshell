@@ -67,12 +67,12 @@ library; the shell mapping should substitute Cairo's real defaults.
 ## Selectors
 
 Every condition in one `match` must hold (AND). An empty `match` matches every monitor (the parser notes that
-`default` is the better place for that).
+`default` is the better place for that). A `deviceName` is trimmed; if a key is repeated in one object the last one wins, as in the rest of `cairo-plus.json`.
 
 | Key | Matches | Specificity |
 |---|---|---|
 | `deviceName` (no wildcard) | exact Windows device name, `DISPLAY2` or `\\.\DISPLAY2`, case-insensitive | 100 |
-| `index` | monitor number; primary is 1, the others follow in natural device-name order | 90 |
+| `index` | monitor number; primary is 1, the others follow in ordinal, case-insensitive device-name order (same as `monitors`; so `DISPLAY10` comes before `DISPLAY2`) | 90 |
 | `deviceName` with `*` / `?` | glob, case-insensitive, tried with and without the `\\.\` prefix | 40 + literal characters (max 59); a lone `*` counts 0 |
 | `primary` | `true`: primary only. `false`: every other monitor | 30 |
 | `minAspectRatio` | width / height at least this (21:9 is about 2.33, so `2.1` finds ultrawides) | 20 |
@@ -130,8 +130,8 @@ the ultrawide rule more specific (for example add `"primary": false` and a `minW
 `ProfilesConfigParser.Parse` never throws. It reports, as findings with a JSON path and a severity:
 
 - unknown keys (typos such as `hieght`), at every level;
-- bad enum values and wrong types (the value is dropped, the property stays unset);
-- non-positive `height` / `iconSize`, negative `margin` or selector bounds;
+- bad enum values and wrong types (in `default` and `profile` the value is dropped and the property stays unset; a rule whose `match` has an invalid value is skipped entirely, because dropping the condition would widen it to more monitors than intended);
+- non-positive `height` / `iconSize` / selector bounds (`minWidth: 0` is an error too), negative `margin`;
 - rules that can never match (`minWidth` above `maxWidth`, `primary: true` with `index: 2`, portrait with an aspect
   ratio of 1 or more, ...);
 - duplicate rule names (explanations would be ambiguous);
@@ -173,8 +173,8 @@ floating, ...) by selector, with a fixed order: device name, number, primary/sec
 | Explainable | no | yes, per property |
 | Hot-plug | bars re-read the config | diff tells the shell which bars to rebuild |
 
-The code does not touch `MonitorOverrides`. Both use the same monitor numbering (primary first, then device-name
-order) so `index` and the existing numeric selectors agree for up to nine monitors. The library has its own
+The code does not touch `MonitorOverrides`. Both use the same monitor numbering (primary first, then ordinal case-insensitive
+device-name order), so `index` and the existing numeric selectors agree. The library has its own
 `MonitorInfo`, in `CairoDesktop.Features.MonitorProfiles`; the existing one is in
 `CairoDesktop.Customization.Config`. Do not import both namespaces in one file.
 
@@ -183,7 +183,7 @@ overrides apply on top, field by field, so an explicit `monitors` entry always w
 
 ## Wiring status
 
-Done and tested on Linux (136 unit tests, `dotnet test Tests/CairoDesktop.Features.Tests`):
+Done and tested on Linux (142 unit tests, `dotnet test Tests/CairoDesktop.Features.Tests`):
 selectors, glob, layering with explanations, topology diff, debouncer, lenient parser with findings.
 
 Written but **never compiled** (WPF cannot build on the authoring machine), in
@@ -191,6 +191,10 @@ Written but **never compiled** (WPF cannot build on the authoring machine), in
 `ScreenSnapshot` (Screen.AllScreens to `MonitorInfo`, per-monitor DPI via `GetDpiForMonitor`) and
 `MonitorProfileWatcher` (SystemEvents.DisplaySettingsChanged, UI-thread marshaling, DispatcherTimer debounce,
 disposal).
+
+The watcher never lets an exception escape a dispatcher callback, retries up to five times when Windows briefly
+reports no screens, and its `Changed` event carries both `ChangedProfileIds` (settings differ) and `Diff.AffectedIds`
+(moved, resized or re-DPI'd); rebuild the union, since a bar whose monitor only moved keeps identical settings.
 
 **Not done**:
 
