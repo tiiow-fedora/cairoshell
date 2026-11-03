@@ -13,6 +13,10 @@ namespace CairoDesktop.Customization.Config
   // Theme pack folder name (from <Cairo>\ThemePacks or %LOCALAPPDATA%\Cairo Desktop\ThemePacks), or null.
   ""theme"": null,
 
+  // Which version of a theme pack to use when it has ""light"" and ""dark"" variants: ""auto"" follows the Windows
+  // app mode (Settings > Personalization > Colors), ""light"" and ""dark"" force one. Packs without variants ignore it.
+  // ""appearance"": ""auto"",
+
   // Bar layout. Each zone is an ordered list of item ids; items you don't list are hidden.
   // A zone you leave out keeps its normal contents. ""stacks"" and ""tasks"" stretch when placed in ""center"".
   //   Menu bar items: cairoMenu, programsMenu, placesMenu, stacks, tray, volume, actionCenter, clock, search
@@ -35,6 +39,13 @@ namespace CairoDesktop.Customization.Config
   //   ""blur"": true                    blur behind the bar; only on docked, square bars (Windows 10
   //                                   can't clip blur to a floating/rounded shape, so it's turned off there)
   // ""animations"": { ""enabled"": true, ""durationMs"": 220 },   slide-in, theme cross-fade, widget hover
+
+  // Per-monitor bar settings, on top of ""menuBar"" and ""taskbar"". Selectors: ""*"" (all), ""primary"", ""secondary"",
+  // a monitor number (primary is 1, the others follow in device name order) or a device name such as ""DISPLAY2"".
+  // When several selectors match one monitor, the more specific one wins field by field.
+  // ""monitors"": {
+  //   ""secondary"": { ""menuBar"": { ""layout"": { ""center"": [""widget:clock""] } }, ""taskbar"": { ""opacity"": 0.8 } },
+  // },
 
   // Widget instances by id. ""type"" defaults to the id, so ""widget:cpu"" works with no entry here.
   // Built-in types: clock, cpu, memory, battery, network, command. Any widget can have

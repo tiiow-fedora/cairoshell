@@ -98,6 +98,14 @@ namespace CairoDesktop.Customization.Themes
     ""urgent"":     ""#F7768E"",
   },
 
+  // Day and night versions: whatever ""light"" or ""dark"" sets replaces the values above while Windows is in that mode
+  // (or while cairo-plus.json has ""appearance"" set to it). Palette roles and resources merge one by one.
+  // ""light"": {
+  //   ""palette"": { ""background"": ""#EFF1F5"", ""surface"": ""#E6E9EF"", ""overlay"": ""#DCE0E8"", ""border"": ""#BCC0CC"",
+  //                ""text"": ""#4C4F69"", ""subtext"": ""#6C6F85"", ""accent"": ""#1E66F5"", ""accentText"": ""#FFFFFF"", ""urgent"": ""#D20F39"" },
+  //   ""wallpaper"": { ""file"": ""wallpaper-day.jpg"", ""style"": ""fill"" },
+  // },
+
   // Override any single Cairo colour by its key in Cairo Desktop/Themes/Cairo.xaml.
   // ""resources"": { ""MenuTopBorderBrush"": ""#FF79C6"" },
 

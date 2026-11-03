@@ -12,6 +12,8 @@ exactly like stock Cairo.
 - [Quick start](#quick-start)
 - [The config file](#the-config-file)
 - [Making a theme pack](#making-a-theme-pack)
+- [Light and dark mode](#light-and-dark-mode)
+- [Per-monitor settings](#per-monitor-settings)
 - [Bar layout](#bar-layout)
 - [Widgets](#widgets)
 - [Writing a widget](#writing-a-widget)
@@ -56,10 +58,12 @@ file for Cairo Plus features. Cairo Plus keeps its own `cairo-plus.json`.
    Or run `CairoDesktop.exe --apply-theme Nord`.
 2. To customise further, press **Open config file**. Every saved edit applies within about half a second.
 
-Bundled packs: **Nord**, **Gruvbox** (own layout and widgets), **Tokyo Night** (floating rounded bars),
+Bundled packs that switch between a light and a dark version with the Windows app mode: **Catppuccin**, **Ayu**
+and **Atom One**. The others:
+**Nord**, **Gruvbox** (own layout and widgets), **Tokyo Night** (floating rounded bars),
 **Mocha Ember** (floating taskbar), **Dracula** (stat widgets), **Rose Pine** (floating rounded bars),
 **Solarized Dark** (network and battery widgets), **Everforest** (floating taskbar with a centred task list)
-and **Catppuccin Latte** (a light theme). `CairoDesktop.exe --list-themes` lists them.
+**Catppuccin Latte** (a light theme) and **Kanagawa** (CPU and memory widgets). `CairoDesktop.exe --list-themes` lists them.
 
 ## The config file
 
@@ -71,12 +75,14 @@ setting.
 {
   "enabled": true,
   "theme": "Nord",                    // theme pack folder name, or null
+  "appearance": "auto",               // auto (follow Windows), light or dark; picks a pack's variant
 
   "menuBar": {                        // layout + shape of the menu bar
     "layout": { "center": ["widget:clock"] },
     "cornerRadius": 8,
   },
   "taskbar": { "floating": true, "margin": 6 },
+  "monitors": { "secondary": { "menuBar": { "opacity": 0.8 } } },
   "animations": { "enabled": true },
 
   "widgets": { "clock": { "type": "clock", "format": "ddd d MMM  HH:mm" } },
@@ -157,7 +163,8 @@ ThemePacks/
 ```
 
 Run `CairoDesktop.exe --new-theme "Dracula"` to start from a commented template, and `--validate-theme` to check it
-(see [Theme authoring tools](#theme-authoring-tools)).
+(see [Theme authoring tools](#theme-authoring-tools)). [THEME-AUTHORING.md](THEME-AUTHORING.md) walks through
+writing a pack, and lists every field and checker message.
 
 **Palette.** Nine semantic roles expand into the roughly 70 brush keys Cairo's XAML themes use (menu bar,
 menus, taskbar buttons in every state, search, dialogs, thumbnails). Only `background` really matters:
@@ -179,6 +186,56 @@ nothing is installed system-wide. `family` must match the font's internal family
 shown there, held in memory only. When Cairo runs on top of Explorer (the usual setup), Cairo's desktop
 is transparent, so the pack sets the **Windows wallpaper**. That change persists after you switch packs or
 turn Cairo Plus off.
+
+## Light and dark mode
+
+A pack can hold a `"light"` and a `"dark"` version of itself, and Cairo Plus applies the one that matches the
+Windows app mode (Settings > Personalization > Colors). Switching the Windows mode re-themes the desktop
+within about half a second.
+
+```jsonc
+// theme.json
+"palette": { "background": "#1E1E2E", "text": "#CDD6F4" },       // dark, the default
+"wallpaper": { "file": "wallpaper-night.jpg" },
+"light": {
+  "palette": { "background": "#EFF1F5", "text": "#4C4F69" },     // merged over the palette above
+  "wallpaper": { "file": "wallpaper-day.jpg" },
+},
+```
+
+```jsonc
+// cairo-plus.json
+"appearance": "auto",    // auto (default): follow Windows. light or dark: always use that version.
+```
+
+A variant may set `palette` and `resources` (both merged key by key), `wallpaper` (replaced) and `darkMode`
+(otherwise `false` for `light` and `true` for `dark`). Packs without variants ignore `appearance`. Hooks receive
+`CAIRO_APPEARANCE`. [THEME-AUTHORING.md](THEME-AUTHORING.md#add-a-day-and-night-version) has the details.
+
+## Per-monitor settings
+
+`"monitors"` overrides bar settings for particular monitors. It applies on top of `"menuBar"` and `"taskbar"`
+(and the pack), field by field:
+
+```jsonc
+"menuBar": { "cornerRadius": 8, "opacity": 0.95 },
+"monitors": {
+  "secondary": { "menuBar": { "layout": { "center": ["widget:clock"] } }, "taskbar": { "opacity": 0.8 } },
+  "3":         { "menuBar": { "opacity": 0.6 } },
+  "DISPLAY2":  { "taskbar": { "floating": false } },
+},
+```
+
+| Selector | Matches |
+|---|---|
+| `*` | every monitor |
+| `primary`, `secondary` | the primary monitor, or every other monitor |
+| `1`, `2`, ... | by number: the primary monitor is 1, the others follow in device name order |
+| `DISPLAY2` | by Windows device name; the long form `\\.\DISPLAY2` also works but needs its backslashes doubled in JSON |
+
+When several selectors match one monitor, the more specific one wins for each field: device name, then number,
+then `primary` or `secondary`, then `*`. A `layout` replaces the whole layout; it is not merged zone by zone.
+A selector that matches no monitor does nothing; a malformed selector is reported in the problem list.
 
 ## Bar layout
 
@@ -366,6 +423,7 @@ wallpaper tools). In `cairo-plus.json`:
   | `CAIRO_THEME`, `CAIRO_THEME_NAME` | pack folder name and display name; empty with no pack |
   | `CAIRO_THEME_DIR` | absolute path of the pack folder |
   | `CAIRO_THEME_DARK` | `1` or `0` |
+  | `CAIRO_APPEARANCE` | `light` or `dark`: the pack version in effect |
   | `CAIRO_WALLPAPER`, `CAIRO_FONT` | the pack's wallpaper path and font family, if set |
   | `CAIRO_COLOR_BACKGROUND`, `_SURFACE`, `_OVERLAY`, `_BORDER`, `_TEXT`, `_SUBTEXT`, `_ACCENT`, `_ACCENTTEXT`, `_URGENT` | `#RRGGBB` |
 
@@ -438,6 +496,8 @@ Conflicts, if any, will be in those spots. Every hook is a no-op while Cairo Plu
     desktop brush code.
 - Pack wallpapers set the Windows wallpaper permanently when Cairo isn't the shell.
 - New widget DLLs need a Cairo restart.
+- Windows lets an app turn on dark mode for its native menus only once per run. After a pack's dark version has
+  been applied, those menus stay dark until Cairo restarts, even if the pack then switches to its light version.
 - Blur only on docked, square bars (see above).
 - Cairo's optional menu bar shadow isn't moved for floating menu bars; leave it off with floating bars.
 
