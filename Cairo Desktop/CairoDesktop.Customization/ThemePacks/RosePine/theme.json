@@ -1,0 +1,29 @@
+// Rose Pine: soho vibes, all natural pine and faux fur (https://rosepinetheme.com).
+{
+  "name": "Rose Pine",
+  "author": "Cairo Plus",
+  "description": "Muted dusk purples, floating rounded bars",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#191724",
+    "surface":    "#1F1D2E",
+    "overlay":    "#26233A",
+    "border":     "#403D52",
+    "text":       "#E0DEF4",
+    "subtext":    "#908CAA",
+    "accent":     "#C4A7E7",
+    "accentText": "#191724",
+    "urgent":     "#EB6F92",
+  },
+
+  "resources": { "MenuTopBorderBrush": "#EBBCBA" },
+
+  "font": { "family": "Segoe UI", "size": 12.5 },
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  "menuBar": { "floating": true, "margin": 8, "cornerRadius": 12, "opacity": 0.9 },
+  "taskbar": { "floating": true, "margin": 8, "cornerRadius": 14, "opacity": 0.9, "spacing": 3 },
+  "animations": { "enabled": true, "durationMs": 260 },
+}

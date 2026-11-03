@@ -1,0 +1,29 @@
+// Catppuccin Latte: the light flavour (https://catppuccin.com).
+{
+  "name": "Catppuccin Latte",
+  "author": "Cairo Plus",
+  "description": "Light and warm with a blue accent, rounded bars",
+  "baseTheme": "Default",
+  "darkMode": false,
+
+  "palette": {
+    "background": "#EFF1F5",
+    "surface":    "#E6E9EF",
+    "overlay":    "#DCE0E8",
+    "border":     "#BCC0CC",
+    "text":       "#4C4F69",
+    "subtext":    "#6C6F85",
+    "accent":     "#1E66F5",
+    "accentText": "#FFFFFF",
+    "urgent":     "#D20F39",
+  },
+
+  "resources": { "MenuTopBorderBrush": "#8839EF" },
+
+  "font": { "family": "Segoe UI", "size": 12 },
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  "menuBar": { "cornerRadius": 0, "opacity": 0.97 },
+  "taskbar": { "floating": true, "margin": 6, "cornerRadius": 12, "opacity": 0.95 },
+  "animations": { "enabled": true },
+}

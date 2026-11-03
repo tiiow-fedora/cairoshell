@@ -1,0 +1,33 @@
+// Solarized Dark: precision colours for machines and people (https://ethanschoonover.com/solarized).
+{
+  "name": "Solarized Dark",
+  "author": "Cairo Plus",
+  "description": "Deep teal with a cream foreground; battery and network in the menu bar",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#002B36",
+    "surface":    "#073642",
+    "overlay":    "#0F4552",
+    "border":     "#586E75",
+    "text":       "#EEE8D5",
+    "subtext":    "#93A1A1",
+    "accent":     "#2AA198",
+    "accentText": "#002B36",
+    "urgent":     "#DC322F",
+  },
+
+  "resources": { "MenuTopBorderBrush": "#B58900" },
+
+  "font": { "family": "Cascadia Mono", "size": 12 },
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  "menuBar": {
+    "layout": { "right": ["widget:network", "widget:battery", "tray", "volume", "actionCenter", "clock", "search"] },
+  },
+  "widgets": {
+    "network": { "type": "network", "format": "↓ {down}  ↑ {up}" },
+    "battery": { "type": "battery", "hideWhenNoBattery": true },
+  },
+}

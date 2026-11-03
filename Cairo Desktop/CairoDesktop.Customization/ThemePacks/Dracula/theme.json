@@ -1,0 +1,39 @@
+// Dracula: dark purple with vivid pastels (https://draculatheme.com).
+{
+  "name": "Dracula",
+  "author": "Cairo Plus",
+  "description": "Dark purple with vivid pink and violet accents, system stats in the menu bar",
+  "baseTheme": "Default",
+  "darkMode": true,
+
+  "palette": {
+    "background": "#282A36",
+    "surface":    "#343746",
+    "overlay":    "#44475A",
+    "border":     "#6272A4",
+    "text":       "#F8F8F2",
+    "subtext":    "#BFBFBF",
+    "accent":     "#BD93F9",
+    "accentText": "#282A36",
+    "urgent":     "#FF5555",
+  },
+
+  "resources": { "MenuTopBorderBrush": "#FF79C6" },
+
+  "font": { "family": "Consolas", "size": 12 },
+  "wallpaper": { "file": "wallpaper.jpg", "style": "fill" },
+
+  "menuBar": {
+    "spacing": 6,
+    "layout": {
+      "center": ["widget:clock"],
+      "right":  ["widget:cpu", "widget:memory", "tray", "volume", "search"],
+    },
+  },
+  "widgets": {
+    "clock":  { "type": "clock", "format": "ddd dd MMM  HH:mm" },
+    "cpu":    { "type": "cpu", "style": "both" },
+    "memory": { "type": "memory", "style": "both" },
+  },
+  "animations": { "enabled": true },
+}
