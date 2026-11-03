@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Update check for Cairo Plus: fetches a signed manifest, verifies the signature and the
+    SHA-256 of the downloaded installer. Deliberately free of WPF/Windows dependencies so it
+    builds and tests on any runner. Nothing in the app calls it yet; see docs/UPDATES.md.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CairoDesktop.Updates</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CairoDesktop.Updates.Tests" />
+  </ItemGroup>
+
+</Project>

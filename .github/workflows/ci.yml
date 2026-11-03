@@ -1,0 +1,116 @@
+name: CI
+
+# Build and test on Windows. Runs for the Cairo Plus branches as well as master.
+on:
+  push:
+    branches: [master, cairo-plus, cairo-packaging]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tooling-tests:
+    # Pure-Python release tooling and the platform-neutral update module run fine on Linux.
+    name: Tooling and update-check tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install cryptography
+
+      - name: Changelog generator tests
+        working-directory: tools/changelog
+        run: python -m unittest -v
+
+      - name: Update manifest tooling tests
+        working-directory: tools/packaging
+        run: python -m unittest -v test_update_manifest
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Update-check tests
+        run: dotnet test "Cairo Desktop/Tests/CairoDesktop.Updates.Tests/CairoDesktop.Updates.Tests.csproj" --logger "trx;LogFileName=updates.trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: updates-test-results
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
+
+  windows:
+    name: Build and test (${{ matrix.name }})
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: net6.0 x64
+            framework: net6.0-windows
+            platform: x64
+            test: true
+          - name: net480 x64
+            framework: net480
+            platform: x64
+            test: true
+          # Needs the .NET 10 SDK to restore; build only, no tests.
+          - name: net10.0 ARM64
+            framework: net10.0-windows
+            platform: ARM64
+            test: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+            10.0.x
+        # 10.0.x is a preview/GA channel depending on date; the job fails loudly if it is unavailable.
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Build
+        working-directory: Cairo Desktop
+        run: >
+          dotnet build "Cairo Desktop/Cairo Desktop.csproj" -c Release
+          -f ${{ matrix.framework }} -p:TargetFrameworks=${{ matrix.framework }}
+          -p:Platform=${{ matrix.platform }}
+
+      - name: Test (Cairo Plus customization layer)
+        if: matrix.test
+        working-directory: Cairo Desktop
+        run: >
+          dotnet test "Tests/CairoDesktop.Customization.Tests/CairoDesktop.Customization.Tests.csproj" -c Release
+          -f ${{ matrix.framework }} -p:TargetFrameworks=${{ matrix.framework }}
+          -p:Platform=${{ matrix.platform }}
+          --logger "trx;LogFileName=customization-${{ matrix.framework }}.trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.framework }}-${{ matrix.platform }}
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
