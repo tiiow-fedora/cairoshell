@@ -43,7 +43,7 @@ namespace CairoDesktop
             // CAIRO-PLUS: --apply-theme / --reload-config edit cairo-plus.json; a running Cairo reloads it live.
             if (CairoDesktop.Customization.CairoPlusCommandLine.Handle(ref args, MutexName))
             {
-                return 0;
+                return CairoDesktop.Customization.CairoPlusCommandLine.ExitCode;
             }
 
             if (!SingleInstanceCheck())

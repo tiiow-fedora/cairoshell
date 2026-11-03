@@ -21,6 +21,12 @@
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>
 
+  <!-- Zip support for --export-theme / --install-theme (built into net6+; separate assemblies on .NET Framework). -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net480'">
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\CairoDesktop.AppGrabber\CairoDesktop.AppGrabber.csproj" />
     <ProjectReference Include="..\CairoDesktop.Application\CairoDesktop.Application.csproj" />
