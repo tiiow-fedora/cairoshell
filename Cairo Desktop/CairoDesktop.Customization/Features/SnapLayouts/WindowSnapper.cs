@@ -1,10 +1,10 @@
 // Win32 adapter for CairoDesktop.Features.SnapLayouts. NOT compiled or run in CI (needs Windows); all decisions
 // live in the tested library, this file only reads window state and calls SetWindowPos.
 //
-// The whole file sits behind CAIRO_SNAP_LAYOUTS because CairoDesktop.Customization does not reference
+// The whole file sits behind CAIRO_FEATURES because CairoDesktop.Customization does not reference
 // CairoDesktop.Features yet. Whoever wires the feature adds the ProjectReference and
-// <DefineConstants>$(DefineConstants);CAIRO_SNAP_LAYOUTS</DefineConstants>. Until then this compiles to nothing.
-#if CAIRO_SNAP_LAYOUTS
+// <DefineConstants>$(DefineConstants);CAIRO_FEATURES</DefineConstants>. Until then this compiles to nothing.
+#if CAIRO_FEATURES
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;

@@ -1,3 +1,4 @@
+#if CAIRO_FEATURES
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -192,3 +193,5 @@ namespace CairoDesktop.Customization.Features.MonitorProfiles
         }
     }
 }
+
+#endif

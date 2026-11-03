@@ -1,3 +1,4 @@
+#if CAIRO_FEATURES
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -85,3 +86,5 @@ namespace CairoDesktop.Customization.Features.MonitorProfiles
         private static extern int GetDpiForMonitor(IntPtr monitor, int dpiType, out uint dpiX, out uint dpiY);
     }
 }
+
+#endif

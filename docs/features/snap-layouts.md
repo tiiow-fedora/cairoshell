@@ -129,7 +129,7 @@ Run the tests with `cd "Cairo Desktop" && dotnet test Tests/CairoDesktop.Feature
 Done: all of the above, with tests. Not done, and needed before this works for a user:
 
 1. Add a `ProjectReference` from `CairoDesktop.Customization` to `CairoDesktop.Features`, and define
-   `CAIRO_SNAP_LAYOUTS` there. `WindowSnapper.cs` is wrapped in `#if CAIRO_SNAP_LAYOUTS` so that the Customization project still
+   `CAIRO_FEATURES` there. `WindowSnapper.cs` is wrapped in `#if CAIRO_FEATURES` so that the Customization project still
    builds without the reference; until then it compiles to nothing.
 2. Read the `snapLayouts` section with `SnapConfigParser.ParseDocument`, show its findings alongside the other config
    findings, and call `WindowSnapper.Configure`.
