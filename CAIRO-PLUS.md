@@ -149,7 +149,7 @@ ThemePacks/
   "icons":    { "MenuIcon": "icons/logo.png" },               // optional; icons/<Key>.png is picked up anyway
   "appIcons": { "firefox.exe": "icons/apps/firefox.png" },
 
-  "xaml": "extra.xaml",            // optional ResourceDictionary for anything else
+  "xaml": "extra.xaml",            // optional ResourceDictionary for anything else (needs "allowPackHooks": true)
 
   // Packs can also set layout, widgets, shapes and effects, exactly like cairo-plus.json:
   "menuBar": { "cornerRadius": 8 },
@@ -429,7 +429,9 @@ wallpaper tools). In `cairo-plus.json`:
 
 - **Packs can carry hooks, but they stay off.** A pack's `"hooks"` only run when your `cairo-plus.json` has
   `"allowPackHooks": true`. Until then, Settings > Theme Packs says the pack has hooks. Read `theme.json` before
-  you turn that on for a pack you downloaded. Pack hooks run before yours.
+  you turn that on for a pack you downloaded. Pack hooks run before yours. The same switch guards the other two ways
+  a pack can run code: its `"xaml"` file (XAML can create arbitrary objects) and any `"command"` widget it defines.
+  Without the switch those two are skipped and listed in the problem list.
 - Hook failures are reported in the problem list and never stop Cairo.
 
 ## Theme authoring tools

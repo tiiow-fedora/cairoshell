@@ -42,11 +42,13 @@ namespace CairoDesktop.Customization.Themes
             }
 
             var manifest = pack.Manifest;
-            env["CAIRO_THEME"] = pack.Id;
-            env["CAIRO_THEME_NAME"] = pack.DisplayName;
-            env["CAIRO_THEME_DIR"] = System.IO.Path.GetFullPath(pack.Folder);
-            env["CAIRO_WALLPAPER"] = settings.GetWallpaperPath() ?? "";
-            env["CAIRO_FONT"] = manifest.Font?.Family ?? "";
+            // Pack text is untrusted and "run" hooks go through cmd.exe, which expands %CAIRO_*% before it parses
+            // "&", "|" and friends. Free text is cleaned; paths that contain such characters are left out.
+            env["CAIRO_THEME"] = CleanText(pack.Id);
+            env["CAIRO_THEME_NAME"] = CleanText(pack.DisplayName);
+            env["CAIRO_THEME_DIR"] = SafePath(System.IO.Path.GetFullPath(pack.Folder));
+            env["CAIRO_WALLPAPER"] = SafePath(settings.GetWallpaperPath() ?? "");
+            env["CAIRO_FONT"] = CleanText(manifest.Font?.Family ?? "");
 
             var expansion = PaletteExpander.Expand(manifest.Palette);
             foreach (var role in expansion.Roles)
@@ -57,6 +59,28 @@ namespace CairoDesktop.Customization.Themes
             bool dark = manifest.DarkMode ?? ColorParser.IsDark(expansion.Roles["background"]);
             env["CAIRO_THEME_DARK"] = dark ? "1" : "0";
             return env;
+        }
+
+        private static readonly char[] ShellMetaCharacters = { '&', '|', '<', '>', '^', '"', '%', '\r', '\n', '\0' };
+
+        /// <summary>Replaces characters that cmd.exe or an argument list would treat specially with "_".</summary>
+        internal static string CleanText(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+
+            var chars = text.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                if (Array.IndexOf(ShellMetaCharacters, chars[i]) >= 0 || char.IsControl(chars[i])) chars[i] = '_';
+            }
+
+            return new string(chars);
+        }
+
+        /// <summary>The path, or "" when it holds a character that could break out of a command line.</summary>
+        internal static string SafePath(string path)
+        {
+            return string.IsNullOrEmpty(path) || path.IndexOfAny(ShellMetaCharacters) >= 0 ? "" : path;
         }
     }
 }

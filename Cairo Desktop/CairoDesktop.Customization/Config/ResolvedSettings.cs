@@ -42,6 +42,15 @@ namespace CairoDesktop.Customization.Config
         /// <summary>True when the active pack defines hooks that were not run because "allowPackHooks" is off.</summary>
         public bool PackHooksBlocked { get; private set; }
 
+        /// <summary>Whether the active pack may run code: hooks, "command" widgets and its own XAML file all need "allowPackHooks".</summary>
+        public bool AllowPackCode { get; private set; }
+
+        /// <summary>True when the active pack has a "xaml" file that is not loaded because "allowPackHooks" is off.</summary>
+        public bool PackXamlBlocked { get; private set; }
+
+        /// <summary>Ids of pack-defined "command" widgets that were dropped because "allowPackHooks" is off.</summary>
+        public List<string> BlockedPackWidgets { get; private set; } = new List<string>();
+
         /// <summary>Exe name to absolute image path.</summary>
         public Dictionary<string, string> AppIcons { get; private set; }
 
@@ -84,9 +93,22 @@ namespace CairoDesktop.Customization.Config
             resolved.PackHooksBlocked = packHasHooks && !config.AllowPackHooks;
             resolved.Hooks = HooksConfig.Combine(packHasHooks && config.AllowPackHooks ? manifest.Hooks : null, config.Hooks);
 
+            resolved.AllowPackCode = config.AllowPackHooks;
+            resolved.PackXamlBlocked = !config.AllowPackHooks && !string.IsNullOrWhiteSpace(manifest?.Xaml);
+
             if (manifest?.Widgets != null)
             {
-                foreach (var entry in manifest.Widgets) resolved.Widgets[entry.Key] = entry.Value;
+                foreach (var entry in manifest.Widgets)
+                {
+                    // A "command" widget runs a command line through cmd.exe, so it is as dangerous as a hook.
+                    if (!config.AllowPackHooks && IsCommandWidget(entry.Key, entry.Value))
+                    {
+                        resolved.BlockedPackWidgets.Add(entry.Key);
+                        continue;
+                    }
+
+                    resolved.Widgets[entry.Key] = entry.Value;
+                }
             }
 
             if (config.Widgets != null)
@@ -112,6 +134,23 @@ namespace CairoDesktop.Customization.Config
             }
 
             return resolved;
+        }
+
+        private static bool IsCommandWidget(string id, JsonElement definition)
+        {
+            string type = id;
+            if (definition.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in definition.EnumerateObject())
+                {
+                    if (string.Equals(property.Name, "type", StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.String)
+                    {
+                        type = property.Value.GetString();
+                    }
+                }
+            }
+
+            return string.Equals((type ?? "").Trim(), "command", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>The wallpaper path from the active pack, or null.</summary>
