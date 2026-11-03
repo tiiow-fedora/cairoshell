@@ -54,15 +54,29 @@ namespace CairoDesktop.Customization.Features.CommandPalette
 
             if (_window != null)
             {
-                _window.Close();
+                _window.CloseOnce();
                 return;
             }
 
-            _window = new PaletteWindow();
-            _window.QueryChanged += OnQueryChanged;
-            _window.Accepted += OnAccepted;
-            _window.Closed += OnWindowClosed;
-            _window.Show();
+            var w = new PaletteWindow();
+            w.QueryChanged += OnQueryChanged;
+            w.Accepted += OnAccepted;
+            w.Closed += OnWindowClosed;
+            _window = w;
+            try
+            {
+                w.Show();
+            }
+            catch (Exception ex)
+            {
+                _log("command palette: could not show window: " + ex.Message);
+                w.QueryChanged -= OnQueryChanged;
+                w.Accepted -= OnAccepted;
+                w.Closed -= OnWindowClosed;
+                _window = null;
+                return;
+            }
+
             Search("");
         }
 
@@ -82,7 +96,17 @@ namespace CairoDesktop.Customization.Features.CommandPalette
         private void Search(string text)
         {
             int generation = ++_generation;
-            var result = _engine.Search(text, _maxResults);
+            PaletteSearchResult result;
+            try
+            {
+                result = _engine.Search(text, _maxResults);
+            }
+            catch (Exception ex)
+            {
+                // Never let a search failure escape into the hotkey/timer callback (it would crash the shell).
+                _log("command palette: search failed: " + ex.Message);
+                return;
+            }
 
             // Stale or late results are dropped: the window may have closed or a newer query started.
             if (_disposed || _window == null || generation != _generation) return;
@@ -95,7 +119,7 @@ namespace CairoDesktop.Customization.Features.CommandPalette
         {
             var item = result.Item;
             _engine.RecordLaunch(item);
-            _window?.Close(); // close first so focus returns to the previous window before the launch
+            _window?.CloseOnce(); // close first so focus returns to the previous window before the launch
             Execute(item.Payload);
         }
 
@@ -128,11 +152,12 @@ namespace CairoDesktop.Customization.Features.CommandPalette
                         break;
 
                     case PaletteActionKind.Launch:
-                        string target = Environment.ExpandEnvironmentVariables(action.Target);
+                        string target = Environment.ExpandEnvironmentVariables(action.Target.Trim().Trim('"'));
+                        string arguments = Environment.ExpandEnvironmentVariables(action.Arguments ?? "");
                         bool isPath = File.Exists(target) || Directory.Exists(target);
                         // Existing files/folders may use the shell (open with the default app). A bare command name
                         // is started directly instead, so arbitrary text can never be handed to the shell verbs.
-                        var psi = new ProcessStartInfo(target, action.Arguments) { UseShellExecute = isPath };
+                        var psi = new ProcessStartInfo(target, arguments) { UseShellExecute = isPath };
                         Process.Start(psi);
                         break;
                 }
@@ -146,6 +171,13 @@ namespace CairoDesktop.Customization.Features.CommandPalette
         public void Dispose()
         {
             if (_disposed) return;
+            if (!_dispatcher.CheckAccess())
+            {
+                // DispatcherTimer and Window are thread-affine: do all of the teardown on the UI thread.
+                _dispatcher.BeginInvoke(new Action(Dispose));
+                return;
+            }
+
             _disposed = true;
             _generation++;
 
@@ -153,11 +185,7 @@ namespace CairoDesktop.Customization.Features.CommandPalette
             _debounce.Tick -= OnDebounceTick;
 
             var w = _window;
-            if (w != null)
-            {
-                if (_dispatcher.CheckAccess()) w.Close();
-                else _dispatcher.BeginInvoke(new Action(w.Close)); // OnWindowClosed detaches the handlers
-            }
+            w?.CloseOnce(); // OnWindowClosed detaches the handlers
         }
     }
 }
