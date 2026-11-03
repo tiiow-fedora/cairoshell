@@ -20,7 +20,8 @@
                  Background="#ff111111"
                  BorderBrush="#ff444444"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 MouseDoubleClick="lstPacks_MouseDoubleClick">
+                 MouseDoubleClick="lstPacks_MouseDoubleClick"
+                 SelectionChanged="lstPacks_SelectionChanged">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Grid Margin="2,4">
@@ -61,6 +62,9 @@
             <Button Click="btnOpenConfig_Click" Height="24" Padding="10,0" Margin="0,0,6,0">Open config file</Button>
             <Button Click="btnOpenPacks_Click" Height="24" Padding="10,0">Open theme packs folder</Button>
         </StackPanel>
+
+        <TextBlock Name="txtFindingsHeader" Text="Checks for the selected pack" Style="{DynamicResource SettingGroupHeader}" />
+        <TextBlock Name="txtFindings" TextWrapping="Wrap" Margin="5,0,5,8" />
 
         <TextBlock Text="Status" Style="{DynamicResource SettingGroupHeader}" />
         <TextBlock Name="txtStatus" TextWrapping="Wrap" Margin="5,0,5,8" />

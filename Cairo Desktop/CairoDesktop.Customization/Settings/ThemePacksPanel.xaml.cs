@@ -73,6 +73,7 @@ namespace CairoDesktop.Customization.Settings
             items.AddRange(service.GetThemePacks().Select(p => PackItem.From(p, service.Settings.Enabled && p.Id == activeId)));
             lstPacks.ItemsSource = items;
             lstPacks.SelectedItem = items.FirstOrDefault(i => string.Equals(i.Id, selectedId, StringComparison.OrdinalIgnoreCase)) ?? items[0];
+            ShowFindings();
 
             var status = new StringBuilder();
             status.AppendLine(service.Settings.Enabled
@@ -90,6 +91,50 @@ namespace CairoDesktop.Customization.Settings
             }
 
             txtStatus.Text = status.ToString().TrimEnd();
+        }
+
+        private void lstPacks_SelectionChanged(object sender, SelectionChangedEventArgs e) => ShowFindings();
+
+        /// <summary>Lists what the theme validator found for the selected pack: errors and warnings, one per line.</summary>
+        private void ShowFindings()
+        {
+            txtFindings.Inlines.Clear();
+
+            var item = lstPacks.SelectedItem as PackItem;
+            if (item?.Pack == null)
+            {
+                txtFindingsHeader.Visibility = Visibility.Collapsed;
+                txtFindings.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            txtFindingsHeader.Visibility = Visibility.Visible;
+            txtFindings.Visibility = Visibility.Visible;
+
+            ThemeFindings findings;
+            try
+            {
+                findings = ThemeFindings.For(item.Pack);
+            }
+            catch (Exception ex)
+            {
+                txtFindings.Inlines.Add(new System.Windows.Documents.Run("The pack could not be checked: " + ex.Message));
+                return;
+            }
+
+            var summary = new System.Windows.Documents.Run(findings.Summary) { FontWeight = FontWeights.SemiBold };
+            txtFindings.Inlines.Add(summary);
+
+            foreach (var line in findings.Lines)
+            {
+                if (line.Severity == IssueSeverity.Info) continue;
+
+                txtFindings.Inlines.Add(new System.Windows.Documents.LineBreak());
+                txtFindings.Inlines.Add(new System.Windows.Documents.Run(line.Text)
+                {
+                    Foreground = new SolidColorBrush(line.Severity == IssueSeverity.Error ? Color.FromRgb(0xFF, 0x7B, 0x72) : Color.FromRgb(0xE3, 0xB3, 0x41))
+                });
+            }
         }
 
         private void ApplySelected()
@@ -153,6 +198,7 @@ namespace CairoDesktop.Customization.Settings
             public string Name { get; set; }
             public string Subtitle { get; set; }
             public string Error { get; set; }
+            public ThemePack Pack { get; set; }
             public bool IsActive { get; set; }
             public List<Brush> Swatches { get; set; } = new List<Brush>();
 
@@ -161,13 +207,14 @@ namespace CairoDesktop.Customization.Settings
 
             public static PackItem From(ThemePack pack, bool active)
             {
-                var item = new PackItem { Id = pack.Id, Name = pack.DisplayName, IsActive = active, Error = pack.Error };
+                var item = new PackItem { Id = pack.Id, Name = pack.DisplayName, IsActive = active, Error = pack.Error, Pack = pack };
                 var manifest = pack.Manifest;
                 if (manifest == null) return item;
 
                 var parts = new List<string>();
                 if (!string.IsNullOrWhiteSpace(manifest.Author)) parts.Add("by " + manifest.Author);
                 if (!string.IsNullOrWhiteSpace(manifest.Description)) parts.Add(manifest.Description);
+                if (ThemeAppearance.HasVariants(manifest)) parts.Add("follows light and dark mode");
                 item.Subtitle = string.Join(" · ", parts);
 
                 if (manifest.Palette != null)
