@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using CairoDesktop.Application.Interfaces;
@@ -43,11 +44,38 @@ namespace CairoDesktop.Customization.Actions
             }
         }
 
-        /// <summary>Runs an action. Returns an error message, or null on success. Call on the UI thread.</summary>
-        public string Run(string action, string arg, string args = null)
+        /// <summary>
+        /// Replaces %NAME% for each entry of <paramref name="environment"/> (case-insensitive). Used for hooks, so that
+        /// "launch" and "run" can refer to CAIRO_THEME_DIR and friends even though they are not set in Cairo's own environment.
+        /// </summary>
+        internal static string ExpandHookVariables(string text, IDictionary<string, string> environment)
+        {
+            if (string.IsNullOrEmpty(text) || environment == null) return text;
+
+            foreach (var entry in environment)
+            {
+                string token = "%" + entry.Key + "%";
+                int index;
+                while ((index = text.IndexOf(token, StringComparison.OrdinalIgnoreCase)) >= 0)
+                {
+                    text = text.Substring(0, index) + entry.Value + text.Substring(index + token.Length);
+                }
+            }
+
+            return text;
+        }
+
+        /// <summary>
+        /// Runs an action. Returns an error message, or null on success. Call on the UI thread.
+        /// <paramref name="environment"/> (hooks only) is given to "run" as environment variables and expanded as %NAME% in the arguments.
+        /// </summary>
+        public string Run(string action, string arg, string args = null, IDictionary<string, string> environment = null)
         {
             string error = Validate(action, arg);
             if (error != null) return error;
+
+            arg = ExpandHookVariables(arg, environment);
+            args = ExpandHookVariables(args, environment);
 
             try
             {
@@ -62,12 +90,19 @@ namespace CairoDesktop.Customization.Actions
                         return null;
 
                     case "run":
-                        Process.Start(new ProcessStartInfo("cmd.exe", "/d /s /c \"" + Environment.ExpandEnvironmentVariables(arg) + "\"")
+                        var runInfo = new ProcessStartInfo("cmd.exe", "/d /s /c \"" + Environment.ExpandEnvironmentVariables(arg) + "\"")
                         {
                             UseShellExecute = false,
                             CreateNoWindow = true,
                             WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-                        });
+                        };
+
+                        if (environment != null)
+                        {
+                            foreach (var variable in environment) runInfo.EnvironmentVariables[variable.Key] = variable.Value;
+                        }
+
+                        Process.Start(runInfo);
                         return null;
 
                     case "theme":

@@ -38,6 +38,7 @@ namespace CairoDesktop.Customization
         private Dispatcher _dispatcher;
         private bool _started;
         private DateTime _ignoreConfigEventsUntil;
+        private DateTime _lastReloadHookUtc = DateTime.MinValue;
 
         private CairoPlusConfig _config = new CairoPlusConfig();
         private readonly List<string> _problems = new List<string>();
@@ -91,6 +92,8 @@ namespace CairoDesktop.Customization
             ApplyNonThemeSettings();
             foreach (var host in CairoPlusHooks.Bars) OnBarRegistered(host);
             StartWatching();
+
+            RunHooks("onStart");
         }
 
         public void Stop()
@@ -149,12 +152,21 @@ namespace CairoDesktop.Customization
         {
             if (!_started) return;
 
+            string previousTheme = Settings.Pack?.Id;
+
             Load();
             ApplyTheme();
             ApplyNonThemeSettings();
             ApplyBars();
             RestartPackWatcher();
             Applied?.Invoke(this, EventArgs.Empty);
+
+            if (!string.Equals(previousTheme, Settings.Pack?.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                RunHooks("onThemeApplied");
+            }
+
+            RunHooks("onConfigReloaded");
         }
 
         /// <summary>
@@ -206,6 +218,12 @@ namespace CairoDesktop.Customization
             }
 
             Settings = ResolvedSettings.Resolve(_config, pack);
+
+            if (Settings.PackHooksBlocked)
+            {
+                AddProblem($"Theme pack '{Settings.Pack?.Id}' defines hooks (programs to run when it is applied), which are off. " +
+                           "Read them in its theme.json and set \"allowPackHooks\": true in cairo-plus.json to run them.");
+            }
 
             var resolved = Settings;
             if (resolved.Pack != null)
@@ -283,6 +301,46 @@ namespace CairoDesktop.Customization
                 WallpaperApplier.Apply(null, null);
             }
         }
+
+        #region Hooks
+        /// <summary>
+        /// Runs the commands configured for a hook (see <see cref="HooksConfig"/>), handing them the current theme
+        /// as CAIRO_* environment variables. A failing hook is reported, never thrown.
+        /// </summary>
+        private void RunHooks(string hookName)
+        {
+            if (!Settings.Enabled || _actions == null) return;
+
+            var hooks = Settings.Hooks.Get(hookName);
+            if (hooks.Count == 0) return;
+
+            if (hookName == "onConfigReloaded")
+            {
+                // A hook that edits cairo-plus.json would otherwise re-trigger itself forever.
+                if (DateTime.UtcNow - _lastReloadHookUtc < TimeSpan.FromSeconds(2))
+                {
+                    AddProblem("onConfigReloaded hooks ran again within 2 seconds and were skipped (does a hook edit cairo-plus.json?).");
+                    return;
+                }
+
+                _lastReloadHookUtc = DateTime.UtcNow;
+            }
+
+            var environment = HookEnvironment.Build(hookName, Settings);
+            foreach (var hook in hooks)
+            {
+                try
+                {
+                    string error = HookAction.Validate(hook) ?? _actions.Run(hook.Action, hook.Arg, hook.Args, environment);
+                    if (error != null) AddProblem($"hook {hookName}: {error}");
+                }
+                catch (Exception ex)
+                {
+                    AddProblem($"hook {hookName}: {ex.Message}");
+                }
+            }
+        }
+        #endregion
 
         #region Bars
         private void OnBarRegistered(BarHost host)

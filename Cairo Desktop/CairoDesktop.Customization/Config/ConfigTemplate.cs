@@ -57,6 +57,19 @@ namespace CairoDesktop.Customization.Config
     // { ""keys"": ""Ctrl+Alt+R"", ""action"": ""reload"" },
   ],
 
+  // Hooks: commands run when something happens. They receive the active theme as environment variables
+  // (CAIRO_THEME, CAIRO_THEME_DIR, CAIRO_THEME_DARK, CAIRO_WALLPAPER, CAIRO_COLOR_BACKGROUND, CAIRO_COLOR_ACCENT, ...),
+  // so a script can restyle your terminal or editor whenever the theme changes. Actions: launch, run, command.
+  //   onStart            once, when Cairo starts
+  //   onThemeApplied     when the active theme pack changed
+  //   onConfigReloaded   every time settings are re-applied (at most once per 2 seconds)
+  ""hooks"": {
+    // ""onThemeApplied"": [ { ""action"": ""run"", ""arg"": ""powershell -NoProfile -File C:\\Scripts\\retheme.ps1"" } ],
+  },
+
+  // Theme packs may carry their own hooks. They stay off until you read them and set this to true.
+  ""allowPackHooks"": false,
+
   // Per-app icon overrides for taskbar and quick launch buttons: exe name -> image file.
   ""appIcons"": {
     // ""notepad.exe"": ""C:\\Icons\\notepad.png"",
