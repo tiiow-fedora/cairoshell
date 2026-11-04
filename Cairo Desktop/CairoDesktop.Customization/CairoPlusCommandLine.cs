@@ -33,7 +33,7 @@ namespace CairoDesktop.Customization
         /// </summary>
         public static bool Handle(ref string[] args, string cairoMutexName)
         {
-            if (ThemeCli.FindCommand(args) != null)
+            if (ThemeCli.FindCommand(args) != null || SettingsCli.FindCommand(args) != null)
             {
                 ExitCode = RunThemeCommand(args);
                 return true;
@@ -83,7 +83,7 @@ namespace CairoDesktop.Customization
             int code;
             try
             {
-                code = ThemeCli.Run(args, context, buffer);
+                code = ThemeCli.FindCommand(args) != null ? ThemeCli.Run(args, context, buffer) : SettingsCli.Run(args, context, buffer);
             }
             catch (Exception ex)
             {

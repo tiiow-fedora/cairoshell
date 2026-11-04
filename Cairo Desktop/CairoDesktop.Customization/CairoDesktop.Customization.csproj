@@ -21,7 +21,7 @@
     <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>
 
-  <!-- Zip support for --export-theme / --install-theme (built into net6+; separate assemblies on .NET Framework). -->
+  <!-- Zip support for the export-theme and install-theme commands (built into net6+; separate assemblies on .NET Framework). -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net480'">
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />

@@ -1,0 +1,155 @@
+name: Release
+
+# Builds portable zips and Inno Setup installers for every profile, generates release notes from
+# git history, writes and signs the update manifest, and publishes a GitHub release.
+#
+#   Tag push (v*):        full release.
+#   workflow_dispatch:    dry run by default (artifacts only); tick "publish" to create the release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without the leading v, e.g. 0.5.0 or 0.5.0-beta.1'
+        required: true
+      publish:
+        description: 'Create the GitHub release (otherwise artifacts only)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
+
+jobs:
+  package:
+    name: Package ${{ matrix.profile }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: true
+      matrix:
+        profile: [x64, x86, arm64, x64_net480, x86_net480]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+            10.0.x
+
+      - name: Normalise version
+        shell: pwsh
+        run: |
+          $v = $env:VERSION -replace '^v', ''
+          if ($v -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') { throw "Bad version '$v'" }
+          "VERSION=$v" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc.exe -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+
+      - name: Build packages
+        shell: pwsh
+        run: ./tools/packaging/Build-Release.ps1 -Profile ${{ matrix.profile }} -Version $env:VERSION -OutputDir artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.profile }}
+          path: |
+            artifacts/*.zip
+            artifacts/*.exe
+          if-no-files-found: error
+
+  release:
+    name: Notes, manifest and release
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install cryptography
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: package-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Normalise version and tag
+        run: |
+          v="${VERSION#v}"
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+          echo "TAG=v$v" >> "$GITHUB_ENV"
+          case "$v" in *-*) echo "CHANNEL=beta" >> "$GITHUB_ENV";; *) echo "CHANNEL=stable" >> "$GITHUB_ENV";; esac
+
+      - name: Release notes
+        run: |
+          prev=$(git describe --tags --abbrev=0 --match 'v*' --exclude "$TAG" 2>/dev/null || true)
+          args=(--version "$VERSION" --repo-url "${{ github.server_url }}/${{ github.repository }}" --output release-notes.md)
+          [ -n "$prev" ] && args+=(--from "$prev") || args+=(--from "")
+          python tools/changelog/generate_changelog.py "${args[@]}"
+          cat release-notes.md
+
+      - name: Checksums
+        working-directory: artifacts
+        run: sha256sum *.zip *.exe > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Update manifest
+        env:
+          BASE: ${{ github.server_url }}/${{ github.repository }}/releases/download
+        run: |
+          set -e
+          assets=()
+          for pair in "x64:x64" "x86:x86" "arm64:arm64" "x64-net480:x64-net480" "x86-net480:x86-net480"; do
+            plat="${pair%%:*}"; file="${pair##*:}"
+            f="artifacts/CairoPlus-$VERSION-$file-setup.exe"
+            [ -f "$f" ] && assets+=(--asset "$plat:installer:$BASE/$TAG/$(basename "$f")::$f")
+          done
+          python tools/packaging/update_manifest.py manifest --version "$VERSION" --channel "$CHANNEL" \
+            --notes-url "${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG" \
+            "${assets[@]}" --output artifacts/update.json
+
+      - name: Sign manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::warning::UPDATE_SIGNING_KEY is not set; the release will have no update.json.sig and in-app update checks will reject it."
+          else
+            python tools/packaging/update_manifest.py sign artifacts/update.json --key-from-env
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            artifacts/*
+            release-notes.md
+
+      - name: Publish GitHub release
+        if: github.event_name == 'push' || inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          [ "$CHANNEL" = beta ] && flags+=(--prerelease)
+          gh release create "$TAG" --title "Cairo Plus $VERSION" --notes-file release-notes.md \
+            --target "${{ github.sha }}" "${flags[@]}" artifacts/*

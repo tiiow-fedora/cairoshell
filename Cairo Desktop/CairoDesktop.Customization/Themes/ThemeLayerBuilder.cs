@@ -21,8 +21,9 @@ namespace CairoDesktop.Customization.Themes
 
         private static readonly string[] IconExtensions = { ".png", ".ico", ".jpg", ".bmp" };
 
+        /// <param name="allowPackXaml">Load the pack's "xaml" file. Only when the user set "allowPackHooks"; the file is untrusted code.</param>
         /// <param name="findExisting">Looks up the current (pre-layer) value of a resource key, used to type raw overrides.</param>
-        public static ResourceDictionary Build(ThemePack pack, Func<string, object> findExisting, List<string> warnings)
+        public static ResourceDictionary Build(ThemePack pack, Func<string, object> findExisting, List<string> warnings, bool allowPackXaml = false)
         {
             var layer = new ResourceDictionary();
             var manifest = pack.Manifest;
@@ -61,7 +62,8 @@ namespace CairoDesktop.Customization.Themes
             ApplyFont(pack, layer, warnings);
             ApplyIcons(pack, layer, warnings);
 
-            if (!string.IsNullOrWhiteSpace(manifest.Xaml))
+            // XamlReader can instantiate arbitrary types (for example ObjectDataProvider), so a pack's own XAML is code.
+            if (!string.IsNullOrWhiteSpace(manifest.Xaml) && allowPackXaml)
             {
                 var extra = LoadXaml(pack, manifest.Xaml, warnings);
                 if (extra != null)

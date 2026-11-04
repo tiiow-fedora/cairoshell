@@ -56,6 +56,31 @@ namespace CairoDesktop.Customization.Tests
         }
 
         [Fact]
+        public void Pack_command_widgets_and_xaml_are_blocked_unless_allowed()
+        {
+            var pack = PackWith(@"{
+  ""xaml"": ""extra.xaml"",
+  ""widgets"": {
+    ""cmd"": { ""type"": ""Command"", ""command"": ""calc"" },
+    ""command"": { ""label"": ""x"" },
+    ""clock"": { ""format"": ""HH:mm"" }
+  }
+}");
+
+            var blocked = ResolvedSettings.Resolve(new CairoPlusConfig { Enabled = true, Theme = "Demo" }, pack);
+            Assert.True(blocked.PackXamlBlocked);
+            Assert.False(blocked.AllowPackCode);
+            Assert.Equal(new[] { "cmd", "command" }, blocked.BlockedPackWidgets.OrderBy(x => x).ToArray());
+            Assert.False(blocked.Widgets.ContainsKey("cmd"));
+            Assert.True(blocked.Widgets.ContainsKey("clock"));
+
+            var allowed = ResolvedSettings.Resolve(new CairoPlusConfig { Enabled = true, Theme = "Demo", AllowPackHooks = true }, pack);
+            Assert.False(allowed.PackXamlBlocked);
+            Assert.True(allowed.AllowPackCode);
+            Assert.True(allowed.Widgets.ContainsKey("cmd"));
+        }
+
+        [Fact]
         public void User_hooks_run_after_pack_hooks()
         {
             var config = new CairoPlusConfig
@@ -120,6 +145,17 @@ namespace CairoDesktop.Customization.Tests
             Assert.True(env.ContainsKey("CAIRO_COLOR_URGENT"));
             Assert.Equal("", env["CAIRO_WALLPAPER"]);
             Assert.True(env["CAIRO_THEME_DIR"].EndsWith("Demo"));
+        }
+
+        [Fact]
+        public void Environment_strips_shell_metacharacters_from_pack_text()
+        {
+            var pack = PackWith(@"{ ""name"": ""Evil & calc | \""x\"" %PATH%"", ""font"": { ""family"": ""A>B"" } }", "/packs/Ev&il");
+            var env = HookEnvironment.Build("onStart", ResolvedSettings.Resolve(new CairoPlusConfig { Enabled = true }, pack));
+
+            Assert.Equal("Evil _ calc _ _x_ _PATH_", env["CAIRO_THEME_NAME"]);
+            Assert.Equal("A_B", env["CAIRO_FONT"]);
+            Assert.Equal("", env["CAIRO_THEME_DIR"]);
         }
 
         [Fact]

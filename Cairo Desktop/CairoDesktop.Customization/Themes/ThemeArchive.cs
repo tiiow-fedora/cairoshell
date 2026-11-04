@@ -72,6 +72,7 @@ namespace CairoDesktop.Customization.Themes
                     Directory.CreateDirectory(staging);
                     string stagingRoot = System.IO.Path.GetFullPath(staging).TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar;
 
+                    long written = 0;
                     foreach (var entry in zip.Entries)
                     {
                         string name = entry.FullName.Replace('\\', '/');
@@ -87,7 +88,15 @@ namespace CairoDesktop.Customization.Themes
                         using (var input = entry.Open())
                         using (var output = File.Create(target))
                         {
-                            input.CopyTo(output);
+                            // The sizes in the zip header can lie, so count what is actually written.
+                            var buffer = new byte[81920];
+                            int read;
+                            while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                            {
+                                written += read;
+                                if (written > MaxUncompressedBytes) throw new InvalidDataException("the archive is larger than 200 MB when unpacked.");
+                                output.Write(buffer, 0, read);
+                            }
                         }
                     }
 

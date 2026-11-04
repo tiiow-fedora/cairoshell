@@ -233,6 +233,12 @@ namespace CairoDesktop.Customization
                            "Read them in its theme.json and set \"allowPackHooks\": true in cairo-plus.json to run them.");
             }
 
+            if (Settings.PackXamlBlocked || Settings.BlockedPackWidgets.Count > 0)
+            {
+                AddProblem($"Theme pack '{Settings.Pack?.Id}' has code that is off: its \"xaml\" file and \"command\" widgets ({string.Join(", ", Settings.BlockedPackWidgets)}) " +
+                           "only load when cairo-plus.json has \"allowPackHooks\": true. Read them in its theme.json first.");
+            }
+
             var resolved = Settings;
             if (resolved.Pack != null)
             {
@@ -258,7 +264,7 @@ namespace CairoDesktop.Customization
             Func<string, object> findExisting = key => resources.Contains(key) ? resources[key] : FindInMerged(resources, key);
             var pack = settings.Pack;
 
-            var layer = pack != null ? ThemeLayerBuilder.Build(pack, findExisting, warnings) : new ResourceDictionary();
+            var layer = pack != null ? ThemeLayerBuilder.Build(pack, findExisting, warnings, settings.AllowPackCode) : new ResourceDictionary();
             ThemeLayerBuilder.ApplyBarOpacity(layer, settings, findExisting);
 
             foreach (string warning in warnings)
