@@ -1,6 +1,6 @@
 # Cairo Plus expansion features
 
-Four new, isolated modules. Each has its logic in a WPF-free library
+Nine isolated modules (the first four, then the five "extras" below them in the table). Each has its logic in a WPF-free library
 (`Cairo Desktop/CairoDesktop.Features`) with unit tests that run on any OS, and a thin Windows adapter
 in `CairoDesktop.Customization/Features/<Module>/`.
 
@@ -10,6 +10,11 @@ in `CairoDesktop.Customization/Features/<Module>/`.
 | Monitor profiles | Named taskbar profiles chosen per monitor by selectors, plus hot-plug diffing | [monitor-profiles.md](monitor-profiles.md) |
 | Clipboard history | Clipboard widget with pinning, search, transforms and a sensitive-data policy | [clipboard-history.md](clipboard-history.md) |
 | Snap layouts | Zone layouts and hotkey window snapping with exact pixel tiling | [snap-layouts.md](snap-layouts.md) |
+| Focus timer | Pomodoro timer widget (`widget:focus`) | [focus-timer.md](focus-timer.md) |
+| Theme schedule | Light/dark pack variant by clock time or sunrise/sunset (`themeSchedule`) | [theme-schedule.md](theme-schedule.md) |
+| Keep awake | Click-to-cycle "don't sleep" widget (`widget:keepawake`) | [keep-awake.md](keep-awake.md) |
+| World clock | Multi-time-zone widget with day markers (`widget:worldclock`) | [world-clock.md](world-clock.md) |
+| Wallpaper slideshow | Rotating wallpaper from a folder (`wallpaperSlideshow`, `widget:wallpaper`) | [wallpaper-slideshow.md](wallpaper-slideshow.md) |
 
 ## Status: logic tested, adapters not yet enabled
 
@@ -28,3 +33,11 @@ in `CairoDesktop.Customization/Features/<Module>/`.
 2. Build for one framework at a time (see the Building section of `CAIRO-PLUS.md`) and fix any compile errors in
    `Features\`. Expect a few: the adapters were written without a compiler.
 3. Wire each feature (config section, hotkey, widget registration). Each page lists what is left.
+
+## The five extras are wired, behind one build flag
+
+Focus timer, theme schedule, keep awake, world clock and wallpaper slideshow are connected to the shell
+(`WidgetRegistry`, `CairoPlusService`), but only when you build with **`-p:CairoExtras=true`**. A normal build does not
+define `CAIRO_EXTRAS`, does not reference the Features library from the shell, and is byte-for-byte the previous code path.
+They use `CAIRO_EXTRAS` instead of `CAIRO_FEATURES`, so the four older, never-compiled adapters stay out of the build.
+Build steps and a click-through checklist: [WINDOWS-VERIFY.md](WINDOWS-VERIFY.md).

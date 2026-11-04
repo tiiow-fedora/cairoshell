@@ -524,6 +524,11 @@ Conflicts, if any, will be in those spots. Every hook is a no-op while Cairo Plu
 
 A command palette, per-monitor taskbar profiles, a clipboard history widget and window snap layouts exist as tested logic with not-yet-enabled Windows adapters. See [docs/features](docs/features/README.md).
 
+Five more are wired in but compiled only with `-p:CairoExtras=true` (see [docs/features/WINDOWS-VERIFY.md](docs/features/WINDOWS-VERIFY.md)):
+a focus (Pomodoro) timer widget, a theme schedule (light/dark by clock or sunrise/sunset), a keep-awake widget,
+a world clock widget and a wallpaper slideshow. Widget types: `focus`, `keepawake`, `worldclock`, `wallpaper`.
+Config sections: `themeSchedule`, `wallpaperSlideshow`.
+
 ## Known limitations
 
 - **Tested** on Windows 10 21H2 with Cairo running on top of Explorer, across three monitors.

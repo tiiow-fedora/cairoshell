@@ -1,5 +1,5 @@
-// Inert until CairoDesktop.Customization defines CAIRO_FEATURES (see docs/features/README.md). Never compiled on Linux.
-#if CAIRO_FEATURES
+// Inert until built with -p:CairoExtras=true (see docs/features/WINDOWS-VERIFY.md). Never compiled on Linux.
+#if CAIRO_FEATURES || CAIRO_EXTRAS
 using System;
 using System.Windows.Threading;
 using CairoDesktop.Features.ThemeSchedule;

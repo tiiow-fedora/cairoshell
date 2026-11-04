@@ -35,6 +35,17 @@
     <ProjectReference Include="..\CairoDesktop.Widgets.Sdk\CairoDesktop.Widgets.Sdk.csproj" />
   </ItemGroup>
 
+  <!--
+    Opt-in Cairo Plus extras (focus timer, theme schedule, keep awake, world clock, wallpaper slideshow).
+    Off by default: a normal build is unchanged. Build with  -p:CairoExtras=true  to compile and enable them.
+  -->
+  <PropertyGroup Condition="'$(CairoExtras)' == 'true'">
+    <DefineConstants>$(DefineConstants);CAIRO_EXTRAS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(CairoExtras)' == 'true'">
+    <ProjectReference Include="..\CairoDesktop.Features\CairoDesktop.Features.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="CairoDesktop.Customization.Tests" />
   </ItemGroup>
