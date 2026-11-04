@@ -114,3 +114,54 @@ jobs:
           name: test-results-${{ matrix.framework }}-${{ matrix.platform }}
           path: "**/TestResults/*.trx"
           if-no-files-found: ignore
+
+  windows-extras:
+    # The opt-in extras (-p:CairoExtras=true) are compiled out of the normal build, so the matrix above never sees them.
+    # This job builds the documented command from docs/features/WINDOWS-VERIFY.md and runs both test projects.
+    name: Build and test with CairoExtras (net6.0 x64)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+            10.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-extras-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-extras-${{ runner.os }}-
+
+      - name: Build (CairoExtras)
+        working-directory: Cairo Desktop
+        run: >
+          dotnet build "Cairo Desktop/Cairo Desktop.csproj" -c Release
+          -f net6.0-windows -p:TargetFrameworks=net6.0-windows
+          -p:Platform=x64 -p:CairoExtras=true
+
+      - name: Test (feature logic)
+        working-directory: Cairo Desktop
+        run: >
+          dotnet test "Tests/CairoDesktop.Features.Tests/CairoDesktop.Features.Tests.csproj" -c Release
+          --logger "trx;LogFileName=features.trx"
+
+      - name: Test (customization layer, CairoExtras)
+        working-directory: Cairo Desktop
+        run: >
+          dotnet test "Tests/CairoDesktop.Customization.Tests/CairoDesktop.Customization.Tests.csproj" -c Release
+          -f net6.0-windows -p:TargetFrameworks=net6.0-windows
+          -p:Platform=x64 -p:CairoExtras=true
+          --logger "trx;LogFileName=customization-extras.trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-extras
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
