@@ -14,7 +14,9 @@ dotnet build "Cairo Desktop/Cairo Desktop.csproj" -f net6.0-windows -p:TargetFra
 ```
 
 (These are the commands from the Building section of `CAIRO-PLUS.md` plus the flag. With the .NET 10 SDK you can drop
-the `TargetFrameworks` override.) The output is `Cairo Desktop/bin/x64/Debug/net6.0-windows/win-x64/CairoDesktop.exe`.
+the `TargetFrameworks` override. The override used to fail restore with `NETSDK1005` because it also reached the
+netstandard2.0 `CairoDesktop.Features` project; that project now keeps its own `TargetFrameworks`
+(`TreatAsLocalProperty`), so the command works from a clean checkout.) The output is `Cairo Desktop/bin/x64/Debug/net6.0-windows/win-x64/CairoDesktop.exe`.
 
 Run the two test projects (they build with or without the flag):
 

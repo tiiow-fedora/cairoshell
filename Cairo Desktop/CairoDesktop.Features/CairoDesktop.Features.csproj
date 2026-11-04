@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk" TreatAsLocalProperty="TargetFrameworks">
 
   <!--
     Cairo Plus feature logic: command palette, monitor profiles, clipboard history, snap layouts.
@@ -7,7 +7,12 @@
   -->
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <!--
+      Plural on purpose. A global -p:TargetFrameworks=... (CI and CAIRO-PLUS.md pass one for the app) flows to every referenced
+      project; this one is netstandard2.0 only, so restore would fail with NETSDK1005. TreatAsLocalProperty on the Project
+      element lets this project's own value win over the global one.
+    -->
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <LangVersion>12</LangVersion>
     <Nullable>disable</Nullable>
     <RootNamespace>CairoDesktop.Features</RootNamespace>
