@@ -39,6 +39,9 @@ namespace CairoDesktop.Customization.Widgets
                 new global::CairoDesktop.Customization.Features.KeepAwake.KeepAwakeWidgetFactory(),
                 new global::CairoDesktop.Customization.Features.WorldClock.WorldClockWidgetFactory(),
                 new global::CairoDesktop.Customization.Features.WallpaperSlideshow.WallpaperButtonWidgetFactory(),
+                new global::CairoDesktop.Customization.Features.QuickNotes.QuickNotesWidgetFactory(),
+                new global::CairoDesktop.Customization.Features.PowerPlan.PowerPlanWidgetFactory(),
+                new global::CairoDesktop.Customization.Features.Agenda.AgendaWidgetFactory(),
 #endif
             })
             {

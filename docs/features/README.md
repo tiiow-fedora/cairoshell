@@ -1,6 +1,6 @@
 # Cairo Plus expansion features
 
-Nine isolated modules (the first four, then the five "extras" below them in the table). Each has its logic in a WPF-free library
+Twelve isolated modules (the first four, then the eight "extras" below them in the table). Each has its logic in a WPF-free library
 (`Cairo Desktop/CairoDesktop.Features`) with unit tests that run on any OS, and a thin Windows adapter
 in `CairoDesktop.Customization/Features/<Module>/`.
 
@@ -15,6 +15,9 @@ in `CairoDesktop.Customization/Features/<Module>/`.
 | Keep awake | Click-to-cycle "don't sleep" widget (`widget:keepawake`) | [keep-awake.md](keep-awake.md) |
 | World clock | Multi-time-zone widget with day markers (`widget:worldclock`) | [world-clock.md](world-clock.md) |
 | Wallpaper slideshow | Rotating wallpaper from a folder (`wallpaperSlideshow`, `widget:wallpaper`) | [wallpaper-slideshow.md](wallpaper-slideshow.md) |
+| Quick notes | Click-to-type notes list saved to a text file (`widget:quicknotes`) | [quick-notes.md](quick-notes.md) |
+| Power plan | Shows and switches the Windows power plan (`widget:powerplan`) | [power-plan.md](power-plan.md) |
+| Calendar agenda | Next event from a local `.ics` file (`widget:agenda`) | [agenda.md](agenda.md) |
 
 ## Status: logic tested, adapters not yet enabled
 
@@ -34,9 +37,9 @@ in `CairoDesktop.Customization/Features/<Module>/`.
    `Features\`. Expect a few: the adapters were written without a compiler.
 3. Wire each feature (config section, hotkey, widget registration). Each page lists what is left.
 
-## The five extras are wired, behind one build flag
+## The eight extras are wired, behind one build flag
 
-Focus timer, theme schedule, keep awake, world clock and wallpaper slideshow are connected to the shell
+Focus timer, theme schedule, keep awake, world clock, wallpaper slideshow, quick notes, power plan and calendar agenda are connected to the shell
 (`WidgetRegistry`, `CairoPlusService`), but only when you build with **`-p:CairoExtras=true`**. A normal build does not
 define `CAIRO_EXTRAS`, does not reference the Features library from the shell, and is byte-for-byte the previous code path.
 They use `CAIRO_EXTRAS` instead of `CAIRO_FEATURES`, so the four older, never-compiled adapters stay out of the build.
