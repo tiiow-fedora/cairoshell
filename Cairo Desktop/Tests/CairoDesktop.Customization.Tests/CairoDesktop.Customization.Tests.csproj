@@ -18,6 +18,12 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- ZipArchive in tests: built into net6+; separate assemblies on .NET Framework. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net480'">
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\CairoDesktop.Customization\CairoDesktop.Customization.csproj" />
   </ItemGroup>
