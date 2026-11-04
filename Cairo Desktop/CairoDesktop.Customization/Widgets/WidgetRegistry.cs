@@ -33,7 +33,13 @@ namespace CairoDesktop.Customization.Widgets
                 new MemoryWidgetFactory(),
                 new BatteryWidgetFactory(),
                 new NetworkWidgetFactory(),
-                new CommandWidgetFactory()
+                new CommandWidgetFactory(),
+#if CAIRO_FEATURES || CAIRO_EXTRAS
+                new global::CairoDesktop.Customization.Features.FocusTimer.FocusTimerWidgetFactory(),
+                new global::CairoDesktop.Customization.Features.KeepAwake.KeepAwakeWidgetFactory(),
+                new global::CairoDesktop.Customization.Features.WorldClock.WorldClockWidgetFactory(),
+                new global::CairoDesktop.Customization.Features.WallpaperSlideshow.WallpaperButtonWidgetFactory(),
+#endif
             })
             {
                 _factories[factory.Type] = factory;

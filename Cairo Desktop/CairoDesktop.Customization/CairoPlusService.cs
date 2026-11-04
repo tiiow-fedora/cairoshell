@@ -40,6 +40,9 @@ namespace CairoDesktop.Customization
         private DateTime _ignoreConfigEventsUntil;
         private DateTime _lastReloadHookUtc = DateTime.MinValue;
         private bool _windowsUsesLightMode;
+#if CAIRO_FEATURES || CAIRO_EXTRAS
+        private global::CairoDesktop.Customization.Features.CairoPlusExtras _extras; // CAIRO-PLUS: theme schedule + wallpaper slideshow
+#endif
 
         private CairoPlusConfig _config = new CairoPlusConfig();
         private readonly List<string> _problems = new List<string>();
@@ -78,6 +81,9 @@ namespace CairoDesktop.Customization
             _actions = new ActionRunner(_commandService, this);
             _widgets = new WidgetRegistry();
             _widgets.LoadExternal(CairoPlusPaths.WidgetFolders);
+#if CAIRO_FEATURES || CAIRO_EXTRAS
+            _extras = new global::CairoDesktop.Customization.Features.CairoPlusExtras(_dispatcher, AddProblem, () => _dispatcher.BeginInvoke(new Action(Reload))); // CAIRO-PLUS
+#endif
 
             CairoPlusHooks.BarRegistered += OnBarRegistered;
             CairoPlusHooks.BarUnregistered += OnBarUnregistered;
@@ -105,6 +111,10 @@ namespace CairoDesktop.Customization
             StopWatching();
             Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
             _hotkeys.Clear();
+#if CAIRO_FEATURES || CAIRO_EXTRAS
+            _extras?.Dispose(); // CAIRO-PLUS
+            _extras = null;
+#endif
 
             CairoPlusHooks.BarRegistered -= OnBarRegistered;
             CairoPlusHooks.BarUnregistered -= OnBarUnregistered;
@@ -225,7 +235,16 @@ namespace CairoDesktop.Customization
             }
 
             _windowsUsesLightMode = WindowsAppearance.UsesLightMode();
-            Settings = ResolvedSettings.Resolve(_config, pack, _windowsUsesLightMode);
+            bool lightMode = _windowsUsesLightMode;
+#if CAIRO_FEATURES || CAIRO_EXTRAS
+            // CAIRO-PLUS: a time-of-day schedule replaces the Windows app mode as the "auto" source (explicit light/dark still wins).
+            if (_config.Enabled)
+            {
+                bool? scheduled = global::CairoDesktop.Customization.Features.CairoPlusExtras.ScheduledLight(ReadConfigText(), TimeZoneInfo.Local, DateTimeOffset.Now);
+                if (scheduled.HasValue) lightMode = scheduled.Value;
+            }
+#endif
+            Settings = ResolvedSettings.Resolve(_config, pack, lightMode);
 
             if (Settings.PackHooksBlocked)
             {
@@ -292,8 +311,20 @@ namespace CairoDesktop.Customization
             _themeService.SetThemeFromSettings();
         }
 
+#if CAIRO_FEATURES || CAIRO_EXTRAS
+        private static string ReadConfigText()
+        {
+            try { return File.Exists(CairoPlusPaths.ConfigFile) ? ConfigLoader.ReadAllTextShared(CairoPlusPaths.ConfigFile) : null; }
+            catch (IOException) { return null; }
+            catch (UnauthorizedAccessException) { return null; }
+        }
+#endif
+
         private void ApplyNonThemeSettings()
         {
+#if CAIRO_FEATURES || CAIRO_EXTRAS
+            _extras?.Apply(ReadConfigText(), _config.Enabled); // CAIRO-PLUS
+#endif
             AppIconOverrides.Instance.SetOverrides(Settings.AppIcons);
             _hotkeys.Apply(Settings.Enabled ? Settings.Hotkeys : null, _actions, AddProblem);
 
