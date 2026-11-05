@@ -1,6 +1,6 @@
-# Verifying the five extras on Windows
+# Verifying the extras on Windows
 
-Focus timer, theme schedule, keep awake, world clock and wallpaper slideshow. Their logic is unit-tested on Linux; the
+Focus timer, theme schedule, keep awake, world clock, wallpaper slideshow, quick notes, power plan and calendar agenda. Their logic is unit-tested on Linux; the
 WPF/Win32 adapters and the wiring into `CairoPlusService` and `WidgetRegistry` **were never compiled**. Expect a compile error or
 two on the first build. The files to look at first are listed at the end.
 
@@ -45,9 +45,12 @@ Open the config with Cairo menu > Cairo Settings > Theme Packs > Open config fil
     "focus":  { "type": "focus", "workMinutes": 1, "shortBreakMinutes": 1, "autoStart": false },
     "awake":  { "type": "keepawake", "presetMinutes": "1,2" },
     "world":  { "type": "worldclock", "zones": "Tokyo=Asia/Tokyo;NYC=America/New_York;London=Europe/London" },
-    "nextwall": { "type": "wallpaper" }
+    "nextwall": { "type": "wallpaper" },
+    "notes":  { "type": "quicknotes" },
+    "power":  { "type": "powerplan" },
+    "agenda": { "type": "agenda", "file": "C:\\Path\\To\\calendar.ics" }
   },
-  "menuBar": { "layout": { "right": ["widget:focus", "widget:awake", "widget:world", "widget:nextwall", "tray", "clock"] } },
+  "menuBar": { "layout": { "right": ["widget:focus", "widget:awake", "widget:world", "widget:nextwall", "widget:notes", "widget:power", "widget:agenda", "tray", "clock"] } },
   "wallpaperSlideshow": { "enabled": true, "folder": "C:\\Path\\To\\A\\Folder\\With\\Pictures", "intervalMinutes": 1, "changeOnStart": true }
 }
 ```
@@ -92,6 +95,26 @@ Open the config with Cairo menu > Cairo Settings > Theme Packs > Open config fil
 - [ ] Sun mode: `"mode": "sun", "latitude": ..., "longitude": ...` with your place; compare the flip times to an almanac (a few minutes' error is expected).
 - [ ] `"themeSchedule": { "enabled": true, "mode": "sun" }` (no coordinates) puts an error in the problem list and the schedule stays off.
 
+### Quick notes
+- [ ] The bar shows `Notes`. Click: a box opens under it with the cursor in it. Type text, Enter: it closes and the bar shows `Notes 1`.
+- [ ] Esc, or clicking elsewhere, closes the box without adding. Blank text adds nothing.
+- [ ] Hover: the note is listed with date and time. Right click: the note appears; click copies it (paste somewhere to check); Delete removes it; Clear all empties.
+- [ ] `%LOCALAPPDATA%\Cairo Desktop\quick-notes.txt` has the notes. Restart Cairo: they are still there.
+
+### Power plan
+- [ ] The bar shows `Power: <your active plan>`; hover lists all plans with `*` on the active one.
+- [ ] Click: the plan changes (compare with `powercfg /getactivescheme` or Settings > Power) and the text updates within a second. No console window flashes.
+- [ ] Change the plan in Settings: the bar follows within the interval (30 s).
+- [ ] With `"cycle": "Balanced;Power saver"` only those two alternate.
+
+### Calendar agenda
+- [ ] Make a small `calendar.ics` with one event starting in about 10 minutes (UTC `DTSTART:...Z`), one all-day event today and one weekly `RRULE:FREQ=WEEKLY;BYDAY=MO,WE`.
+      The bar shows `Next HH:MM <title>` in your local time; hover lists the events by day with the all-day one marked.
+- [ ] Edit the file (change the title) and save: the bar updates within the interval, or at once after a click.
+- [ ] When the event starts the text becomes `Now <title>`.
+- [ ] Missing file: the bar shows `Agenda: ?` and the log names the path. No `file` option: `Agenda: no file`.
+- [ ] Right click > Open calendar file opens it in the default app.
+
 ### Regression
 - [ ] Remove the flag (default build): Cairo behaves as before; `widget:focus` etc. are reported as unknown widget types.
 - [ ] Switching theme packs and the existing widgets (clock, cpu, memory) still work with the flag on.
@@ -103,7 +126,8 @@ The never-compiled files, in the order to read them:
 1. `CairoDesktop.Customization/Features/CairoPlusExtras.cs`
 2. `CairoDesktop.Customization/CairoPlusService.cs` (the four `#if CAIRO_FEATURES || CAIRO_EXTRAS` blocks)
 3. `CairoDesktop.Customization/Widgets/WidgetRegistry.cs` (one `#if` block)
-4. `Features/WallpaperSlideshow/SlideshowController.cs`, `Features/KeepAwake/KeepAwakeWidget.cs`, `Features/FocusTimer/FocusTimerWidget.cs`,
+4. `Features/QuickNotes/QuickNotesWidget.cs`, `Features/PowerPlan/PowerPlanWidget.cs`, `Features/Agenda/AgendaWidget.cs`,
+   `Features/WallpaperSlideshow/SlideshowController.cs`, `Features/KeepAwake/KeepAwakeWidget.cs`, `Features/FocusTimer/FocusTimerWidget.cs`,
    `Features/WorldClock/WorldClockWidget.cs`, `Features/ThemeSchedule/AppearanceScheduler.cs`
 5. `CairoDesktop.Customization.csproj` (the `CairoExtras` property groups)
 
